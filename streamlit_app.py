@@ -1,176 +1,155 @@
 import streamlit as st
-import time
 
-st.set_page_config(page_title="스트림릿독스", page_icon="🐶", layout="centered")
+st.set_page_config(page_title="알아두면 쓸데있는 신비한 상식사전", page_icon="💡", layout="centered")
 
-# CSS 애니메이션 정의
-css = """
+# CSS로 UI 꾸미기
+st.markdown("""
 <style>
-/* 🐶 기본 숨쉬기 애니메이션 (Neutral) */
-@keyframes breathe {
-    0%, 100% { transform: scale(1); }
-    50% { transform: scale(1.05); }
-}
-
-/* ✨ 기분 좋음 애니메이션 (Happy) - 통통 튀고 회전 */
-@keyframes bounce_happy {
-    0%, 100% { transform: translateY(0) rotate(0deg); }
-    25% { transform: translateY(-30px) rotate(-10deg); }
-    50% { transform: translateY(0) rotate(0deg); }
-    75% { transform: translateY(-30px) rotate(10deg); }
-}
-
-/* 🍖 먹는중 애니메이션 (Eating) - 눌렸다 늘어났다 */
-@keyframes squash_eat {
-    0%, 100% { transform: scale(1, 1); }
-    25% { transform: scale(1.2, 0.8) translateY(10px); }
-    50% { transform: scale(0.9, 1.1) translateY(-10px); }
-    75% { transform: scale(1.1, 0.9) translateY(5px); }
-}
-
-/* 💤 자는중 애니메이션 (Sleeping) - 느리고 깊게 숨쉬기, 투명도 조절 */
-@keyframes sleep_breathe {
-    0%, 100% { transform: scale(1) translateY(0); opacity: 1; }
-    50% { transform: scale(1.02) translateY(5px); opacity: 0.8; }
-}
-
-/* 😠 화남 애니메이션 (Angry) - 부들부들 떨기 */
-@keyframes shake_angry {
-    0% { transform: translateX(0) scale(1.1); }
-    25% { transform: translateX(-10px) scale(1.1); }
-    50% { transform: translateX(10px) scale(1.1); }
-    75% { transform: translateX(-10px) scale(1.1); }
-    100% { transform: translateX(0) scale(1.1); }
-}
-
-.dog-neutral {
-    display: inline-block;
-    animation: breathe 3s infinite ease-in-out;
-}
-
-.dog-happy {
-    display: inline-block;
-    animation: bounce_happy 1s infinite;
-}
-
-.dog-eating {
-    display: inline-block;
-    animation: squash_eat 0.5s infinite;
-}
-
-.dog-sleeping {
-    display: inline-block;
-    animation: sleep_breathe 4s infinite ease-in-out;
-}
-
-.dog-angry {
-    display: inline-block;
-    animation: shake_angry 0.3s infinite;
-    color: red; /* 약간 붉은 기운을 주고 싶지만 이모지라 큰 효과는 없을 수 있음 */
-}
-
-.emoji-container {
-    text-align: center;
-    font-size: 150px;
-    margin-top: 20px;
-    margin-bottom: 20px;
-}
+    .stButton>button {
+        width: 100%;
+        border-radius: 10px;
+        border: 2px solid #4CAF50;
+        background-color: white;
+        color: #4CAF50;
+        font-weight: bold;
+        transition: all 0.3s;
+    }
+    .stButton>button:hover {
+        background-color: #4CAF50;
+        color: white;
+    }
+    .question-box {
+        background-color: #f0f2f6;
+        padding: 20px;
+        border-radius: 10px;
+        margin-bottom: 20px;
+        border-left: 5px solid #4CAF50;
+    }
+    .score-text {
+        font-size: 24px;
+        font-weight: bold;
+        color: #FF9800;
+        text-align: center;
+    }
 </style>
-"""
+""", unsafe_allow_html=True)
 
-st.markdown(css, unsafe_allow_html=True)
+st.title("💡 알쓸신상 퀴즈룸")
+st.markdown("하루에 하나씩! 몰라도 살아가는데 지장 없지만 **알면 왠지 똑똑해 보이는 상식 퀴즈**를 풀어보세요.")
 
-st.title("🐾 스트림릿독스 (Streamlit-dogs)")
-st.markdown("나만의 가상 반려견과 수다떨고 놀아보세요!")
+# 퀴즈 데이터셋
+quiz_data = [
+    {
+        "question": "다음 중 가장 먼저 만들어진 패스트푸드 프랜차이즈는 무엇일까요?",
+        "options": ["맥도날드", "버거킹", "A&W 레스토랑"],
+        "answer": "A&W 레스토랑",
+        "explanation": "A&W는 1919년에 루트비어 스탠드로 시작하여 1923년에 첫 번째 프랜차이즈 드라이브인 레스토랑을 열었습니다. 맥도날드는 1940년에 시작되었습니다."
+    },
+    {
+        "question": "다음 중 딸기는 과연 어떤 부위를 먹는 것일까요?",
+        "options": ["열매", "꽃받침", "씨앗"],
+        "answer": "꽃받침",
+        "explanation": "우리가 먹는 붉고 달콤한 딸기의 부위는 사실 열매가 아니라 꽃받침(화탁)이 부풀어 오른 것입니다. 진짜 열매는 겉에 씨앗처럼 콕콕 박혀있는 작은 알갱이들입니다."
+    },
+    {
+        "question": "세계에서 가장 많이 팔린 게임은 무엇일까요? (2024년 기준)",
+        "options": ["마인크래프트", "테트리스", "GTA 5"],
+        "answer": "마인크래프트",
+        "explanation": "마인크래프트(Minecraft)는 전 세계적으로 3억 장 이상 판매되어 역사상 가장 많이 팔린 비디오 게임 1위를 기록하고 있습니다."
+    },
+    {
+        "question": "낙타의 혹에는 무엇이 들어있을까요?",
+        "options": ["물", "지방", "근육"],
+        "answer": "지방",
+        "explanation": "낙타의 혹은 물주머니가 아니라 '지방'을 저장하는 곳입니다. 사막에서 먹이를 구하기 힘들 때 이 지방을 분해하여 에너지원과 수분으로 사용합니다."
+    },
+    {
+        "question": "다음 중 대한민국의 천연기념물 제1호는 무엇일까요?",
+        "options": ["진도의 진돗개", "대구 도동 측백나무 숲", "팔만대장경"],
+        "answer": "대구 도동 측백나무 숲",
+        "explanation": "대한민국의 천연기념물 제1호는 대구광역시 동구 도동에 위치한 수림지인 '대구 도동 측백나무 숲'입니다."
+    }
+]
 
-# 상태 초기화
-if "dog_state" not in st.session_state:
-    st.session_state.dog_state = "neutral"
-if "affection" not in st.session_state:
-    st.session_state.affection = 50
-if "hunger" not in st.session_state:
-    st.session_state.hunger = 50
+# 세션 상태 초기화
+if "current_q" not in st.session_state:
+    st.session_state.current_q = 0
+if "score" not in st.session_state:
+    st.session_state.score = 0
+if "is_answered" not in st.session_state:
+    st.session_state.is_answered = False
+if "user_choice" not in st.session_state:
+    st.session_state.user_choice = None
 
-# 강아지 상태 업데이트 로직 (간단하게)
-if st.session_state.hunger < 20:
-    st.session_state.dog_state = "angry"
-elif st.session_state.affection > 80 and st.session_state.dog_state != "sleeping":
-    st.session_state.dog_state = "happy"
+# 현재 퀴즈 정보
+q_idx = st.session_state.current_q
+total_q = len(quiz_data)
 
-# 강아지 상태에 따른 이미지와 메시지 설정
-states = {
-    "neutral": {"emoji": "🐕", "msg": "강아지가 평온하게 당신을 바라보고 있습니다.", "class": "dog-neutral"},
-    "happy": {"emoji": "🐶💕", "msg": "강아지가 기분이 아주 좋습니다! 꼬리를 흔들며 방방 뜁니다.", "class": "dog-happy"},
-    "eating": {"emoji": "🐕🍖", "msg": "강아지가 게걸스럽게 밥을 먹고 있습니다 냠냠!", "class": "dog-eating"},
-    "sleeping": {"emoji": "🐕💤", "msg": "강아지가 새근새근 깊게 자고 있습니다... 쉿!", "class": "dog-sleeping"},
-    "angry": {"emoji": "👿🐕", "msg": "강아지가 불만스러운 표정으로 으르렁거립니다. 배가 고프거나 화가 났어요.", "class": "dog-angry"}
-}
+if q_idx < total_q:
+    q_data = quiz_data[q_idx]
 
-current_state = states[st.session_state.dog_state]
+    # 진행률 표시
+    st.progress(q_idx / total_q, text=f"진행 상황: {q_idx + 1} / {total_q} 문제")
 
-# UI 출력
-st.subheader("나의 강아지 '바둑이'")
+    # 질문 표시
+    st.markdown(f"""
+        <div class='question-box'>
+            <h3>Q{q_idx + 1}. {q_data['question']}</h3>
+        </div>
+    """, unsafe_allow_html=True)
 
-# 강아지 애니메이션 출력 (CSS 클래스 적용)
-html_dog = f"""
-<div class="emoji-container">
-    <div class="{current_state['class']}">{current_state['emoji']}</div>
-</div>
-"""
-st.markdown(html_dog, unsafe_allow_html=True)
-st.info(current_state["msg"])
-
-st.divider()
-
-# 상태바
-col1, col2 = st.columns(2)
-with col1:
-    st.progress(st.session_state.affection / 100, text=f"친밀도: {st.session_state.affection}/100")
-with col2:
-    st.progress(st.session_state.hunger / 100, text=f"포만감: {st.session_state.hunger}/100")
-
-st.divider()
-
-# 액션 버튼들
-st.write("무엇을 할까요?")
-c1, c2, c3, c4 = st.columns(4)
-
-with c1:
-    if st.button("쓰다듬기 ✋", use_container_width=True):
-        if st.session_state.dog_state != "sleeping":
-            st.session_state.affection = min(100, st.session_state.affection + 10)
-            st.session_state.dog_state = "happy"
-            st.rerun()
+    # 선택지 (이미 답을 고른 경우 비활성화 또는 표시 변경)
+    if not st.session_state.is_answered:
+        col1, col2, col3 = st.columns(3)
+        cols = [col1, col2, col3]
+        
+        for i, option in enumerate(q_data["options"]):
+            with cols[i]:
+                if st.button(option, key=f"btn_{q_idx}_{i}"):
+                    st.session_state.is_answered = True
+                    st.session_state.user_choice = option
+                    # 정답 체크
+                    if option == q_data["answer"]:
+                        st.session_state.score += 1
+                    st.rerun()
+    else:
+        # 문제 풀이 결과 및 해설 표시영역
+        st.write("---")
+        if st.session_state.user_choice == q_data["answer"]:
+            st.success("🎉 정답입니다!")
         else:
-            st.warning("강아지가 자고 있어서 깰까 봐 조심스럽게 쓰다듬었습니다.")
-
-with c2:
-    if st.button("밥 주기 🍖", use_container_width=True):
-        if st.session_state.dog_state != "sleeping":
-            st.session_state.hunger = min(100, st.session_state.hunger + 20)
-            st.session_state.dog_state = "eating"
+            st.error(f"❌ 오답입니다. (내가 고른 답: {st.session_state.user_choice})")
+        
+        st.info(f"👉 **정답: {q_data['answer']}**\n\n💡 **해설:** {q_data['explanation']}")
+        
+        st.write("")
+        # 다음 문제로 넘어가기 버튼
+        if st.button("다음 문제로 ⏭️", type="primary"):
+            st.session_state.current_q += 1
+            st.session_state.is_answered = False
+            st.session_state.user_choice = None
             st.rerun()
-        else:
-            st.warning("자는 중에는 밥을 먹일 수 없어요!")
 
-with c3:
-    if st.button("놀아주기 🎾", use_container_width=True):
-        if st.session_state.dog_state != "sleeping":
-            st.session_state.affection = min(100, st.session_state.affection + 15)
-            st.session_state.hunger = max(0, st.session_state.hunger - 10)
-            st.session_state.dog_state = "happy"
-            st.rerun()
-        else:
-            st.warning("강아지가 너무 졸려합니다.")
-
-with c4:
-    if st.button("재우기 🛏️", use_container_width=True):
-        st.session_state.dog_state = "sleeping"
+else:
+    # 모든 문제를 다 풀었을 때의 결과 화면
+    st.balloons()
+    st.markdown("<h2 style='text-align: center;'>🎊 퀴즈 종료! 🎊</h2>", unsafe_allow_html=True)
+    
+    st.markdown(f"<p class='score-text'>최종 점수: {st.session_state.score} / {total_q} 점</p>", unsafe_allow_html=True)
+    
+    # 점수에 따른 메시지
+    score_ratio = st.session_state.score / total_q
+    if score_ratio == 1.0:
+        st.success("완벽합니다! 걸어다니는 백과사전이시군요! 📚")
+    elif score_ratio >= 0.6:
+        st.info("훌륭합니다! 상식이 아주 풍부하시네요! 🤓")
+    else:
+        st.warning("아깝네요! 하지만 오늘 새로운 지식을 많이 얻어가셨으니 성공입니다! 💪")
+        
+    st.write("---")
+    if st.button("처음부터 다시 도전하기 🔄", use_container_width=True):
+        st.session_state.current_q = 0
+        st.session_state.score = 0
+        st.session_state.is_answered = False
+        st.session_state.user_choice = None
         st.rerun()
-
-# 시간이 지나면 배고파지는 스크립트를 위해 리셋 기능
-if st.button("처음부터 다시 키우기", type="primary"):
-    st.session_state.dog_state = "neutral"
-    st.session_state.affection = 50
-    st.session_state.hunger = 50
-    st.rerun()
