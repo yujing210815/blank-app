@@ -1,13 +1,84 @@
 import streamlit as st
-
-st.title("🎈 하이 하이 ")
-st.write(
-    "Let's start building! For help and inspiration, head over to [docs.streamlit.io](https://docs.streamlit.io/)."
-)
-import streamlit as st
 import time
 
 st.set_page_config(page_title="스트림릿독스", page_icon="🐶", layout="centered")
+
+# CSS 애니메이션 정의
+css = """
+<style>
+/* 🐶 기본 숨쉬기 애니메이션 (Neutral) */
+@keyframes breathe {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+}
+
+/* ✨ 기분 좋음 애니메이션 (Happy) - 통통 튀고 회전 */
+@keyframes bounce_happy {
+    0%, 100% { transform: translateY(0) rotate(0deg); }
+    25% { transform: translateY(-30px) rotate(-10deg); }
+    50% { transform: translateY(0) rotate(0deg); }
+    75% { transform: translateY(-30px) rotate(10deg); }
+}
+
+/* 🍖 먹는중 애니메이션 (Eating) - 눌렸다 늘어났다 */
+@keyframes squash_eat {
+    0%, 100% { transform: scale(1, 1); }
+    25% { transform: scale(1.2, 0.8) translateY(10px); }
+    50% { transform: scale(0.9, 1.1) translateY(-10px); }
+    75% { transform: scale(1.1, 0.9) translateY(5px); }
+}
+
+/* 💤 자는중 애니메이션 (Sleeping) - 느리고 깊게 숨쉬기, 투명도 조절 */
+@keyframes sleep_breathe {
+    0%, 100% { transform: scale(1) translateY(0); opacity: 1; }
+    50% { transform: scale(1.02) translateY(5px); opacity: 0.8; }
+}
+
+/* 😠 화남 애니메이션 (Angry) - 부들부들 떨기 */
+@keyframes shake_angry {
+    0% { transform: translateX(0) scale(1.1); }
+    25% { transform: translateX(-10px) scale(1.1); }
+    50% { transform: translateX(10px) scale(1.1); }
+    75% { transform: translateX(-10px) scale(1.1); }
+    100% { transform: translateX(0) scale(1.1); }
+}
+
+.dog-neutral {
+    display: inline-block;
+    animation: breathe 3s infinite ease-in-out;
+}
+
+.dog-happy {
+    display: inline-block;
+    animation: bounce_happy 1s infinite;
+}
+
+.dog-eating {
+    display: inline-block;
+    animation: squash_eat 0.5s infinite;
+}
+
+.dog-sleeping {
+    display: inline-block;
+    animation: sleep_breathe 4s infinite ease-in-out;
+}
+
+.dog-angry {
+    display: inline-block;
+    animation: shake_angry 0.3s infinite;
+    color: red; /* 약간 붉은 기운을 주고 싶지만 이모지라 큰 효과는 없을 수 있음 */
+}
+
+.emoji-container {
+    text-align: center;
+    font-size: 150px;
+    margin-top: 20px;
+    margin-bottom: 20px;
+}
+</style>
+"""
+
+st.markdown(css, unsafe_allow_html=True)
 
 st.title("🐾 스트림릿독스 (Streamlit-dogs)")
 st.markdown("나만의 가상 반려견과 수다떨고 놀아보세요!")
@@ -20,28 +91,33 @@ if "affection" not in st.session_state:
 if "hunger" not in st.session_state:
     st.session_state.hunger = 50
 
-# 강아지 상태에 따른 이미지와 메시지 설정
-states = {
-    "neutral": {"emoji": "🐕", "msg": "강아지가 당신을 바라보고 있습니다."},
-    "happy": {"emoji": "🐶✨", "msg": "강아지가 기분이 아주 좋습니다! 꼬리를 흔들어요."},
-    "eating": {"emoji": "🍖🐕", "msg": "강아지가 밥을 맛있게 먹고 있습니다 냠냠."},
-    "sleeping": {"emoji": "💤🐕", "msg": "강아지가 새근새근 자고 있습니다... 쉿!"},
-    "angry": {"emoji": "😠🐕", "msg": "강아지가 불만스러운 표정입니다. 배가 고프거나 심심한가봐요."}
-}
-
 # 강아지 상태 업데이트 로직 (간단하게)
 if st.session_state.hunger < 20:
     st.session_state.dog_state = "angry"
-elif st.session_state.affection > 80:
+elif st.session_state.affection > 80 and st.session_state.dog_state != "sleeping":
     st.session_state.dog_state = "happy"
+
+# 강아지 상태에 따른 이미지와 메시지 설정
+states = {
+    "neutral": {"emoji": "🐕", "msg": "강아지가 평온하게 당신을 바라보고 있습니다.", "class": "dog-neutral"},
+    "happy": {"emoji": "🐶💕", "msg": "강아지가 기분이 아주 좋습니다! 꼬리를 흔들며 방방 뜁니다.", "class": "dog-happy"},
+    "eating": {"emoji": "🐕🍖", "msg": "강아지가 게걸스럽게 밥을 먹고 있습니다 냠냠!", "class": "dog-eating"},
+    "sleeping": {"emoji": "🐕💤", "msg": "강아지가 새근새근 깊게 자고 있습니다... 쉿!", "class": "dog-sleeping"},
+    "angry": {"emoji": "👿🐕", "msg": "강아지가 불만스러운 표정으로 으르렁거립니다. 배가 고프거나 화가 났어요.", "class": "dog-angry"}
+}
 
 current_state = states[st.session_state.dog_state]
 
 # UI 출력
 st.subheader("나의 강아지 '바둑이'")
 
-# 강아지 모습 출력 (큰 텍스트로 이모지 출력, 실제 앱이면 이미지로 대체 추천)
-st.markdown(f"<h1 style='text-align: center; font-size: 150px;'>{current_state['emoji']}</h1>", unsafe_allow_html=True)
+# 강아지 애니메이션 출력 (CSS 클래스 적용)
+html_dog = f"""
+<div class="emoji-container">
+    <div class="{current_state['class']}">{current_state['emoji']}</div>
+</div>
+"""
+st.markdown(html_dog, unsafe_allow_html=True)
 st.info(current_state["msg"])
 
 st.divider()
