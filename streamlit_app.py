@@ -1,323 +1,915 @@
 import streamlit as st
-import random, os
+import pandas as pd
+import numpy as np
+import plotly.express as px
+import plotly.graph_objects as go
+import io
 
-st.set_page_config(page_title="마왕의 성", page_icon="⚔️", layout="centered")
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# 1. 페이지 설정
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+st.set_page_config(
+    page_title="☕ 카페 창업 시뮬레이터",
+    page_icon="☕",
+    layout="wide",
+    initial_sidebar_state="expanded",
+)
 
-import base64, pathlib
-
-def img_to_b64(path):
-    p = pathlib.Path(path)
-    if p.exists():
-        return "data:image/png;base64," + base64.b64encode(p.read_bytes()).decode()
-    return ""
-
-_DIR = pathlib.Path(__file__).parent
-OPENING_B64 = img_to_b64(_DIR / "quiz_opening.png")
-ENDING_B64  = img_to_b64(_DIR / "quiz_ending.png")
-
-P = {
-    '.':None,'K':'#111','W':'#FFF',
-    'c':'#CC1100','C':'#FF3322','n':'#FDBCB4','m':'#8B4513',
-    'B':'#1565C0','b':'#1E88E5','Y':'#FFD700','S':'#E0E0E0','s':'#9E9E9E',
-    'T':'#3E2723','t':'#6D4C41','R':'#E53935',
-    'G':'#2ECC40','g':'#1A8026','e':'#FFEE00',
-    'j':'#5D9B3A','J':'#3A6B20','p':'#7B1FA2','q':'#4A148C',
-    'O':'#D84315','o':'#BF360C','A':'#546E7A','a':'#78909C',
-    'U':'#E0E0E0','u':'#9E9E9E','V':'#1A237E','v':'#283593',
-    'X':'#B71C1C','x':'#D32F2F','Z':'#4A148C','z':'#7B1FA2',
-    'F':'#FF6D00','f':'#FFD740','H':'#880E4F',
-}
-
-def svg(rows, px=11):
-    mw = max(len(r) for r in rows)
-    mh = len(rows)
-    r = []
-    for y,row in enumerate(rows):
-        for x,ch in enumerate(row):
-            c=P.get(ch)
-            if c: r.append(f'<rect x="{x*px}" y="{y*px}" width="{px}" height="{px}" fill="{c}"/>')
-    return (f'<svg xmlns="http://www.w3.org/2000/svg" width="{mw*px}" height="{mh*px}" '
-            f'style="image-rendering:pixelated;display:block;">{"".join(r)}</svg>')
-
-HI = ["..KccccK..","..KcCCCcK.","..KcCCCcK.","KKnnnnnnKK",
-      "KnKnnnnKnK","KnnnnnnnnK","KnmmmmmnnK","BBBBBBBBsS",
-      "BbBBBBbBsS","BBBYBBBBs.","..BBBBBBK.","..KBB..BBK",
-      "..KBB..BBK","..KTT..TTK"]
-HA = ["..KccccK..",".KcCCCCcK.","..KcCCCcK.","KKnnnnnnKK",
-      "KnKnnnnK.K","KnnnnnnnnK","KnmmmmmnnK","BBBBBBsSSSSS",
-      "BbBBBBbSSSSs","BBBYBBBBssss","..BBBBBBK....","..KBB..BBK...",
-      "..KBB..BBK...","..KTT..TTK..."]
-HH = ["..KccccK..","..KcCCCcK.","..KcCCCcK.","KKnnnnnnKK",
-      "KnKKnnKKnK","KnnnnnnnnK","KnKKKKKnnK","BBBBBBBBsS",
-      "BbBBBBbBsS","BBBYBBBBs.","..BBBBBBK.","..KBB..BBK",
-      "..KBB..BBK","..KTT..TTK"]
-
-SLIME_SPR = ["..GGGGGG..","GGGGGgGGGG","GGGGGGGGgG",
-    "GGeGGGGeGG","GGgGGGGgGG","GGGGGGGGgG","GKWWWWWWKg",".GGGGGGgG.","GGG.GG.GGG"]
-GOB_SPR = [".KKKKKKKKK.",".JjjjJjjjJ.",".JjKJJKjjJ.",
-    "JjKWGKWGjjJ","JjKOGKOGjjJ",".JjJJJJjJ.",".JjKwKwKjJ.","..KpBpBpK..","..KjK.KjK.",
-    "..KjK.KjK..","..KJKkKJK.."]
-ORC_SPR = ["..KOOOOKKK","KOOoOOOoOOK","KOOOOOOOoOK",
-    "KOKnKKnKOK","KOOOOOOOoOK","KOKwKwKOOK","KAAAAAAAAK.","KAaAAAaAAK.","KAARRRAAaK.",
-    "..KAK.KAK..","..KOKKOK...","..KtKKKtK.."]
-UND_SPR = [".KVVVVVVVk.","KVVvVVVvVVK","KVVVVVVVvVK",
-    "KVKuVKuVvK","KVVVVVVVvVK","KVKKKKKKvVK","KAAAAAAAAK.","KAaAAaAAaK.","KAARRAAaAK.",
-    "..KAK.KAK..","..KVKKVK...","..KuKKKuK.."]
-DEM_SPR = ["FKZZzZZKF.","KZZzZZzZZK","KZKZZZZZKZK",
-    "KZKxZKxZZK","KZzZZZZZZK","KZKHZzHZZK",".KZZZZZZK..","KZXxXxXZZK","KZZXxXZZZK",
-    "..KZK.KZK..","..KZKFKZK..","..KfKKKfK.."]
-
-MONSTERS = [("슬라임",SLIME_SPR,"💚"),("고블린",GOB_SPR,"👺"),
-            ("오크전사",ORC_SPR,"💪"),("언데드",UND_SPR,"💀"),("마왕",DEM_SPR,"😈")]
-SKILLS = ["🔥","⚔️","🌪️"]
-
-QUIZ_POOL = [
-  [{"q":"딸기의 달콤한 빨간 부위는 식물학적으로?","opts":["열매(과육)","꽃받침(화탁)","씨앗"],"ans":"꽃받침(화탁)","exp":"우리가 먹는 붉은 부위는 꽃받침이 발달한 것! 진짜 열매는 표면의 작은 씨앗들입니다."},
-   {"q":"낙타 혹 속에 가득 들어있는 것은?","opts":["물","지방","근육"],"ans":"지방","exp":"낙타의 혹은 지방 저장소! 이 지방 분해로 에너지와 수분을 얻습니다."},
-   {"q":"세계 최초로 생긴 패스트푸드 프랜차이즈는?","opts":["맥도날드","버거킹","A&W 레스토랑"],"ans":"A&W 레스토랑","exp":"A&W는 1919년 시작! 맥도날드는 1940년이에요."},
-   {"q":"딸기는 장미과의 식물이다?","opts":["참이다","거짓이다","장미과가 아닌 딸기과"],"ans":"참이다","exp":"딸기는 장미과(Rosaceae)에 속합니다. 장미, 사과, 복숭아도 같은 과!"}],
-  [{"q":"역사상 가장 많이 팔린 비디오 게임은?","opts":["마인크래프트","테트리스","GTA 5"],"ans":"마인크래프트","exp":"마인크래프트는 3억 장 이상 팔려 역대 1위입니다!"},
-   {"q":"빛의 속도에 가장 가까운 것은?","opts":["약 30만 km/s","약 3만 km/s","약 3억 km/s"],"ans":"약 30만 km/s","exp":"빛의 속도는 진공에서 약 299,792 km/s ≈ 30만 km/s입니다."},
-   {"q":"인체에서 가장 큰 기관(organ)은?","opts":["간","폐","피부"],"ans":"피부","exp":"피부는 약 1.5~2㎡로 인체에서 가장 큰 단일 기관입니다!"},
-   {"q":"뇌의 10% 설은?","opts":["사실이다","근거 없는 미신","50%만 맞다"],"ans":"근거 없는 미신","exp":"뇌의 10%만 사용한다는 건 완전한 미신! 뇌 전체가 활발히 사용됩니다."}],
-  [{"q":"대한민국 천연기념물 제1호는?","opts":["진도 진돗개","대구 도동 측백나무 숲","울릉 향나무"],"ans":"대구 도동 측백나무 숲","exp":"1962년 지정된 대구 동구 도동 측백나무 숲이 천연기념물 1호입니다."},
-   {"q":"태양계에서 위성(달) 수가 가장 많은 행성은?","opts":["목성","토성","천왕성"],"ans":"토성","exp":"2023년 기준 토성은 146개 이상의 위성을 보유해 태양계 최다입니다!"},
-   {"q":"모국어 사용자 수 1위 언어는?","opts":["영어","스페인어","만다린(중국어)"],"ans":"만다린(중국어)","exp":"모국어 기준 만다린 약 9억 명 이상으로 1위! 영어는 총 사용자 기준 1위예요."},
-   {"q":"올림픽 오륜기의 색깔은 몇 가지?","opts":["4가지","5가지","6가지"],"ans":"5가지","exp":"파랑, 노랑, 검정, 초록, 빨강 5색! 흰 바탕 포함하면 모든 국가 국기 색을 포함합니다."}],
-  [{"q":"귀가 완전히 먼 후 베토벤이 작곡한 교향곡은?","opts":["운명(5번)","전원(6번)","합창(9번)"],"ans":"합창(9번)","exp":"완전히 청력을 잃은 채로 합창 교향곡을 완성했습니다. 경이로운 일이죠!"},
-   {"q":"셰익스피어 4대 비극이 아닌 것은?","opts":["햄릿","로미오와 줄리엣","맥베스"],"ans":"로미오와 줄리엣","exp":"4대 비극은 햄릿·오셀로·맥베스·리어왕! 로미오와 줄리엣은 포함되지 않습니다."},
-   {"q":"피카소 '게르니카'가 비판한 것은?","opts":["1차 세계대전","스페인 내전 중 폭격","프랑스 혁명"],"ans":"스페인 내전 중 폭격","exp":"게르니카는 1937년 스페인 내전 당시 나치 독일의 폭격에 항의한 작품입니다."},
-   {"q":"최초로 노벨상을 두 번 받은 사람은?","opts":["아인슈타인","마리 퀴리","라이너스 폴링"],"ans":"마리 퀴리","exp":"마리 퀴리는 물리학상(1903)과 화학상(1911)을 수상한 최초의 2회 수상자입니다!"}],
-  [{"q":"실제로 존재하지 않는 화학 원소는?","opts":["아인슈타이늄(Es)","닥터륨(Dc)","오가네손(Og)"],"ans":"닥터륨(Dc)","exp":"아인슈타이늄(99번)과 오가네손(118번)은 실존 원소! 닥터륨은 허구입니다."},
-   {"q":"블랙홀에서 빠져나올 수 있는 것은?","opts":["빛","중력파","아무것도 없다"],"ans":"중력파","exp":"블랙홀에서 빛조차 탈출 불가! 그러나 중력파는 시공간 파동이라 방출됩니다."},
-   {"q":"인간의 DNA와 가장 가까운 동물은?","opts":["침팬지","돌고래","문어"],"ans":"침팬지","exp":"침팬지는 인간과 약 98.7%의 DNA를 공유합니다. 가장 가까운 친척이죠!"},
-   {"q":"슈뢰딩거의 고양이 실험이 설명하는 것은?","opts":["고양이의 수명","양자 중첩의 역설","상대성 이론"],"ans":"양자 중첩의 역설","exp":"관찰 전까지 살아있고 죽어있는 두 상태가 중첩된다는 양자역학의 역설입니다!"}],
-]
-
-HITS_NEEDED = 3
-MAX_HP = 5
-
-def init():
-    shuffled = [random.sample(pool, len(pool)) for pool in QUIZ_POOL]
-    st.session_state.update({
-        "screen":"title",
-        "mon_idx":0,"mon_hits":0,"qpool_idx":0,
-        "player_hp":MAX_HP,"answered":False,"last_correct":None,
-        "mon_dying":False,"shuffled_quiz":shuffled,
-    })
-
-if "screen" not in st.session_state: init()
-
-# ─── CSS ──────────────────────────────────────────────────────────────────
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# 2. 커스텀 CSS (커피 브라운 다크 테마)
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 st.markdown("""
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Noto+Sans+KR:wght@700&display=swap');
-.stApp{background:#0d0d1a;}
-.pix{font-family:'Press Start 2P',cursive;}
-.battle{background:linear-gradient(180deg,#1a0830 0%,#0d0d2a 60%,#050a05 100%);
-  border:4px solid #ffd700;padding:18px 24px;
-  display:flex;justify-content:space-between;align-items:flex-end;
-  min-height:230px;position:relative;box-shadow:0 0 30px rgba(255,215,0,.2);}
-.battle::after{content:'';position:absolute;inset:0;pointer-events:none;
-  background:repeating-linear-gradient(transparent,transparent 3px,rgba(0,0,0,.1) 4px);}
-.hud{display:flex;justify-content:space-between;align-items:center;margin:6px 0;}
-.hudlbl{font-family:'Press Start 2P',cursive;font-size:9px;color:#bbb;}
-.qcard{background:rgba(0,0,0,.7);border:3px solid #5c6bc0;border-radius:4px;
-  padding:14px;color:#fffde7;font-family:'Noto Sans KR',sans-serif;font-size:16px;font-weight:700;margin:10px 0;}
-.res-ok{background:rgba(0,255,100,.1);border:2px solid #00e676;border-radius:4px;
-  padding:10px;color:#00e676;font-family:'Press Start 2P',cursive;font-size:10px;text-align:center;margin:6px 0;}
-.res-ng{background:rgba(244,67,54,.1);border:2px solid #f44336;border-radius:4px;
-  padding:10px;color:#ff5252;font-family:'Press Start 2P',cursive;font-size:10px;text-align:center;margin:6px 0;}
-.exp{background:rgba(255,255,255,.05);border-left:4px solid #ffd700;border-radius:0 4px 4px 0;
-  padding:10px 14px;color:#e0e0e0;font-family:'Noto Sans KR',sans-serif;font-size:14px;margin:6px 0;}
-.title-overlay{position:relative;text-align:center;}
-.title-overlay img{width:100%;border:4px solid #ffd700;border-radius:6px;box-shadow:0 0 40px rgba(255,215,0,.4);}
-.stButton>button{width:100%;border-radius:4px;border:3px solid #5c6bc0;background:#0d0d2a;
-  color:#fff;font-family:'Noto Sans KR',sans-serif;font-weight:700;font-size:16px;
-  box-shadow:3px 3px 0 #5c6bc0;transition:all .15s;padding:12px 8px;}
-.stButton>button:hover{background:#5c6bc0;box-shadow:none;transform:translate(3px,3px);}
-@keyframes hatk{0%{transform:translateX(0) scaleX(1);}40%{transform:translateX(30px) scaleX(1.15);}100%{transform:translateX(0) scaleX(1);}}
-@keyframes hhit{0%{transform:translateX(0);filter:none;}30%{transform:translateX(-22px);filter:brightness(3) hue-rotate(180deg);}100%{transform:translateX(0);filter:none;}}
-@keyframes mhit{0%{transform:translateX(0);filter:none;}30%{transform:translateX(18px);filter:brightness(4) saturate(0);}100%{transform:translateX(0);filter:none;}}
-@keyframes matk{0%{transform:translateX(0);}40%{transform:translateX(-26px) scaleX(1.2);}100%{transform:translateX(0) scaleX(1);}}
-@keyframes flt{0%,100%{transform:translateY(0);}50%{transform:translateY(-7px);}}
-@keyframes mdie{0%{opacity:1;transform:scale(1);}100%{opacity:0;transform:scale(.3) translateY(30px);}}
-@keyframes pulse{0%,100%{text-shadow:0 0 10px #ffd700;}50%{text-shadow:0 0 30px #ffd700,0 0 60px #ff9800;}}
-.flt{display:inline-block;animation:flt 2.2s ease-in-out infinite;}
-.hatk{display:inline-block;animation:hatk .5s ease forwards;}
-.hhit{display:inline-block;animation:hhit .5s ease forwards;}
-.mflt{display:inline-block;animation:flt 2.8s ease-in-out infinite;}
-.mhit{display:inline-block;animation:mhit .5s ease forwards;}
-.matk{display:inline-block;animation:matk .5s ease forwards;}
-.mdie{display:inline-block;animation:mdie .8s ease forwards;}
-.pulse{animation:pulse 1.5s ease-in-out infinite;}
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+html, body, [class*="css"] {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+/* ── 메트릭 카드 ── */
+div[data-testid="stMetric"] {
+    background: linear-gradient(135deg, #1C1410 0%, #2A1F17 100%);
+    border: 1px solid rgba(212, 165, 116, 0.2);
+    border-radius: 12px;
+    padding: 20px 24px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+div[data-testid="stMetric"]:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 30px rgba(212, 165, 116, 0.2);
+    border-color: rgba(212, 165, 116, 0.5);
+}
+div[data-testid="stMetric"] label {
+    color: #A89279 !important;
+    font-size: 0.85rem !important;
+    font-weight: 500 !important;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+div[data-testid="stMetric"] [data-testid="stMetricValue"] {
+    font-size: 1.8rem !important;
+    font-weight: 700 !important;
+    color: #F5E6D3 !important;
+}
+
+/* ── 사이드바 ── */
+section[data-testid="stSidebar"] {
+    background: linear-gradient(180deg, #0E0B08 0%, #1A1410 100%);
+    border-right: 1px solid rgba(212, 165, 116, 0.15);
+}
+
+/* ── 탭 ── */
+.stTabs [data-baseweb="tab-list"] {
+    gap: 8px;
+    background-color: rgba(28, 20, 16, 0.5);
+    border-radius: 12px;
+    padding: 4px;
+}
+.stTabs [data-baseweb="tab"] {
+    border-radius: 8px;
+    padding: 10px 20px;
+    font-weight: 500;
+    transition: all 0.3s ease;
+}
+.stTabs [aria-selected="true"] {
+    background-color: rgba(212, 165, 116, 0.15) !important;
+    border-color: transparent !important;
+}
+
+/* ── 차트 컨테이너 ── */
+div[data-testid="stPlotlyChart"] {
+    background: rgba(28, 20, 16, 0.4);
+    border-radius: 12px;
+    padding: 8px;
+    border: 1px solid rgba(212, 165, 116, 0.1);
+    transition: border-color 0.3s ease;
+}
+div[data-testid="stPlotlyChart"]:hover {
+    border-color: rgba(212, 165, 116, 0.3);
+}
+
+/* ── 데이터프레임 ── */
+div[data-testid="stDataFrame"] {
+    border-radius: 12px;
+    overflow: hidden;
+    border: 1px solid rgba(212, 165, 116, 0.15);
+}
+
+/* ── 버튼 ── */
+.stDownloadButton > button {
+    background: linear-gradient(135deg, #D4A574 0%, #8B6914 100%);
+    color: #1C1410;
+    border: none;
+    border-radius: 8px;
+    font-weight: 600;
+    padding: 10px 28px;
+    transition: all 0.3s ease;
+}
+.stDownloadButton > button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(212, 165, 116, 0.4);
+}
+
+/* ── 스크롤바 ── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: #0E0B08; }
+::-webkit-scrollbar-thumb { background: #D4A574; border-radius: 3px; }
+
+hr { border-color: rgba(212, 165, 116, 0.15) !important; }
+.block-container { padding-top: 2rem; }
+
+/* ── 커스텀 컴포넌트 ── */
+.gradient-title {
+    background: linear-gradient(120deg, #D4A574 0%, #F5D5A0 30%, #D4A574 60%, #8B6914 100%);
+    background-size: 200% auto;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    animation: gradient-shift 4s ease infinite;
+    font-size: 2.2rem;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+}
+@keyframes gradient-shift {
+    0% { background-position: 0% center; }
+    50% { background-position: 100% center; }
+    100% { background-position: 0% center; }
+}
+.page-subtitle { color: #A89279; font-size: 1rem; margin-bottom: 2rem; }
+.section-header {
+    color: #F5D5A0;
+    font-size: 1.15rem;
+    font-weight: 600;
+    margin: 1.5rem 0 1rem 0;
+    padding-left: 12px;
+    border-left: 3px solid #D4A574;
+}
+.kpi-card {
+    background: linear-gradient(135deg, #1C1410 0%, #2A1F17 100%);
+    border: 1px solid rgba(212, 165, 116, 0.2);
+    border-radius: 16px;
+    padding: 24px;
+    text-align: center;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+}
+.kpi-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, #D4A574, #F5D5A0);
+}
+.kpi-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 30px rgba(212, 165, 116, 0.15);
+}
+.kpi-icon { font-size: 2rem; margin-bottom: 8px; }
+.kpi-value { font-size: 2rem; font-weight: 700; color: #F5E6D3; margin: 4px 0; }
+.kpi-label { font-size: 0.85rem; color: #A89279; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
+.kpi-delta { font-size: 0.85rem; font-weight: 600; padding: 4px 12px; border-radius: 20px; display: inline-block; }
+.kpi-delta.positive { color: #6BCB77; background: rgba(107, 203, 119, 0.1); }
+.kpi-delta.negative { color: #FF6B6B; background: rgba(255, 107, 107, 0.1); }
+.kpi-delta.neutral { color: #D4A574; background: rgba(212, 165, 116, 0.1); }
 </style>
 """, unsafe_allow_html=True)
 
-screen = st.session_state.screen
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# 3. 차트 공통 설정
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+COLORS = ["#D4A574", "#F5D5A0", "#8B6914", "#6BCB77", "#FF6B6B", "#5DADE2", "#C39BD3"]
+DARK_LAYOUT = dict(
+    paper_bgcolor="rgba(0,0,0,0)",
+    plot_bgcolor="rgba(0,0,0,0)",
+    font=dict(family="Inter, sans-serif", color="#E0D5C8", size=12),
+    margin=dict(l=20, r=20, t=40, b=20),
+    legend=dict(bgcolor="rgba(0,0,0,0)", font=dict(size=11),
+                orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+    xaxis=dict(gridcolor="rgba(212,165,116,0.08)", zerolinecolor="rgba(212,165,116,0.1)"),
+    yaxis=dict(gridcolor="rgba(212,165,116,0.08)", zerolinecolor="rgba(212,165,116,0.1)"),
+    hoverlabel=dict(bgcolor="#1C1410", font_size=12, font_color="#F5E6D3"),
+)
 
-# ════════════════════════════════════════════════════════════
-# 🎬 TITLE SCREEN
-# ════════════════════════════════════════════════════════════
-if screen == "title":
-    if OPENING_B64:
-        st.markdown(f'<img src="{OPENING_B64}" style="width:100%;border:4px solid #ffd700;border-radius:6px;box-shadow:0 0 40px rgba(255,215,0,.4);margin-bottom:8px">', unsafe_allow_html=True)
+
+def apply_dark(fig, title=""):
+    fig.update_layout(**DARK_LAYOUT)
+    if title:
+        fig.update_layout(title=dict(text=title, font=dict(size=16, color="#F5D5A0")))
+    return fig
+
+
+def section_header(text):
+    st.markdown(f'<div class="section-header">{text}</div>', unsafe_allow_html=True)
+
+
+def kpi_card(icon, label, value, delta="", status="positive"):
+    d_cls = status
+    d_arrow = "▲" if status == "positive" else ("▼" if status == "negative" else "●")
+    d_html = f'<div class="kpi-delta {d_cls}">{d_arrow} {delta}</div>' if delta else ""
+    st.markdown(f"""
+    <div class="kpi-card">
+        <div class="kpi-icon">{icon}</div>
+        <div class="kpi-label">{label}</div>
+        <div class="kpi-value">{value}</div>
+        {d_html}
+    </div>""", unsafe_allow_html=True)
+
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# 4. 상권 등급 데이터 (현실 기반)
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+LOCATION_DATA = {
+    "S급 (강남역·명동급)": {"deposit_per_pyeong": 300, "rent_per_pyeong": 20, "turnover": 5.5, "desc": "유동인구 최상위, 높은 임대료"},
+    "A급 (홍대·이태원급)": {"deposit_per_pyeong": 200, "rent_per_pyeong": 14, "turnover": 4.5, "desc": "유동인구 상위, 젊은 고객층"},
+    "B급 (일반 상가)":     {"deposit_per_pyeong": 150, "rent_per_pyeong": 10, "turnover": 3.5, "desc": "보통 유동인구, 안정적 수요"},
+    "C급 (주택가)":        {"deposit_per_pyeong": 100, "rent_per_pyeong": 6,  "turnover": 2.5, "desc": "단골 중심, 낮은 임대료"},
+}
+
+SEASONAL_FACTOR = {
+    "1월": 0.70, "2월": 0.75, "3월": 1.00, "4월": 1.10, "5월": 1.15,
+    "6월": 0.90, "7월": 0.80, "8월": 0.80, "9월": 1.05, "10월": 1.10,
+    "11월": 0.95, "12월": 1.15,
+}
+
+HOUR_WEIGHT = {
+    "08-09": 0.08, "09-10": 0.12, "10-11": 0.10, "11-12": 0.09,
+    "12-13": 0.11, "13-14": 0.10, "14-15": 0.09, "15-16": 0.08,
+    "16-17": 0.07, "17-18": 0.06, "18-19": 0.04, "19-20": 0.03,
+    "20-21": 0.02, "21-22": 0.01,
+}
+
+DAY_WEIGHT = {"월": 0.90, "화": 0.95, "수": 1.00, "목": 1.00, "금": 1.15, "토": 1.20, "일": 0.80}
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# 5. 사이드바 — 핵심 파라미터 입력
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+with st.sidebar:
     st.markdown("""
-    <div style="text-align:center;padding:16px 0 8px">
-      <p class="pix pulse" style="color:#ffd700;font-size:15px;margin:0">⚔ 마왕의 성 ⚔</p>
-      <p class="pix" style="color:#b39ddb;font-size:9px;margin-top:12px">QUIZ DUNGEON</p>
-      <p style="color:#aaa;font-family:'Noto Sans KR',sans-serif;font-size:14px;margin-top:10px">
-         퀴즈를 풀어 몬스터를 물리치고 마왕의 성을 정복하라!<br>
-         <b>3번 정답</b>을 맞추면 몬스터를 격파합니다.<br>
-         오답 시 <b>❤️ 한 개</b>가 깎입니다. HP 5개로 도전!
-      </p>
-    </div>
-    """, unsafe_allow_html=True)
-    col1, col2, col3 = st.columns([1,2,1])
-    with col2:
-        if st.button("🗡️  게임 시작!", use_container_width=True, type="primary"):
-            st.session_state.screen = "game"
-            st.rerun()
-    st.stop()
-
-# ════════════════════════════════════════════════════════════
-# 💀 GAME OVER
-# ════════════════════════════════════════════════════════════
-mi  = st.session_state.mon_idx
-php = st.session_state.player_hp
-
-if php <= 0:
-    st.markdown(f"""
-    <div style="text-align:center;padding:20px">
-      <p class="pix" style="color:#f44336;font-size:20px;text-shadow:0 0 20px #f44336">💀 GAME OVER 💀</p>
-      <p style="color:#aaa;font-family:'Noto Sans KR',sans-serif;font-size:15px">{mi+1}층에서 쓰러졌습니다...</p>
-      <p style="color:#bbb;font-family:'Noto Sans KR',sans-serif;font-size:13px">더 많은 상식을 쌓고 다시 도전하세요!</p>
+    <div style="text-align:center; padding:1rem 0 1.5rem 0;">
+        <div style="font-size:2.5rem; margin-bottom:4px;">☕</div>
+        <div style="font-size:1.1rem; font-weight:700; color:#F5D5A0; letter-spacing:1px;">
+            CAFE SIMULATOR</div>
+        <div style="font-size:0.75rem; color:#A89279; margin-top:2px;">
+            현실 기반 카페 창업 시뮬레이터</div>
     </div>""", unsafe_allow_html=True)
-    col1, col2, col3 = st.columns([1,2,1])
-    with col2:
-        if st.button("🔄 처음으로", use_container_width=True):
-            init(); st.rerun()
-    st.stop()
+    st.divider()
 
-# ════════════════════════════════════════════════════════════
-# 🏆 CLEAR SCREEN
-# ════════════════════════════════════════════════════════════
-if mi >= len(MONSTERS):
-    st.balloons()
-    if ENDING_B64:
-        st.markdown(f'<img src="{ENDING_B64}" style="width:100%;border:4px solid #ffd700;border-radius:6px;box-shadow:0 0 40px rgba(255,215,0,.4);margin-bottom:8px">', unsafe_allow_html=True)
-    rank = "S" if php==MAX_HP else ("A" if php>=4 else ("B" if php>=3 else ("C" if php>=2 else "D")))
-    rank_color = {"S":"#FFD700","A":"#C0C0C0","B":"#CD7F32","C":"#78909C","D":"#f44336"}[rank]
-    st.markdown(f"""
-    <div style="text-align:center;padding:16px 0">
-      <p class="pix pulse" style="color:#ffd700;font-size:16px">👑 DUNGEON CLEAR! 👑</p>
-      <p style="color:#e0e0e0;font-family:'Noto Sans KR',sans-serif;font-size:16px;margin-top:10px">
-         마왕을 물리치고 성을 탈환했습니다!</p>
-      <p class="pix" style="color:{rank_color};font-size:24px;margin:10px 0">RANK: {rank}</p>
-      <p style="color:#f48fb1;font-family:'Noto Sans KR',sans-serif;font-size:15px">
-         잔여 HP: {"❤️"*php}{"🖤"*(MAX_HP-php)}</p>
-    </div>""", unsafe_allow_html=True)
-    col1, col2, col3 = st.columns([1,2,1])
-    with col2:
-        if st.button("🔄 다시 도전", use_container_width=True, type="primary"):
-            init(); st.rerun()
-    st.stop()
+    # ── 📍 입지 & 매장 ──
+    st.header("📍 입지 & 매장")
+    location_grade = st.selectbox("상권 등급", list(LOCATION_DATA.keys()), index=2)
+    loc = LOCATION_DATA[location_grade]
+    st.caption(f"💡 {loc['desc']}")
 
-# ════════════════════════════════════════════════════════════
-# ⚔️ GAME SCREEN
-# ════════════════════════════════════════════════════════════
-hits   = st.session_state.mon_hits
-qi     = st.session_state.qpool_idx
-dying  = st.session_state.mon_dying
-lc     = st.session_state.last_correct
-quiz   = st.session_state.shuffled_quiz
+    area_pyeong = st.slider("매장 면적 (평)", 8, 40, 15)
 
-mon_name, mon_spr, mon_ico = MONSTERS[mi]
-q_pool = quiz[mi]
-q = q_pool[qi % len(q_pool)]
+    rec_deposit = loc["deposit_per_pyeong"] * area_pyeong
+    rec_rent = loc["rent_per_pyeong"] * area_pyeong
+    st.caption(f"📌 추천값: 보증금 {rec_deposit:,}만 / 월세 {rec_rent:,}만")
 
-hero_spr  = HA if lc is True else (HH if lc is False else HI)
-hero_anim = "hatk" if lc is True else ("hhit" if lc is False else "flt")
-mon_anim  = "mdie" if dying else ("mhit" if lc is True else ("matk" if lc is False else "mflt"))
+    deposit = st.number_input("보증금 (만원)", 500, 20000, rec_deposit, step=100)
+    monthly_rent = st.number_input("월 임대료 (만원)", 50, 1000, rec_rent, step=10)
 
-hero_svg_str = svg(hero_spr, 10)
-mon_svg_str  = svg(mon_spr, 12)
+    st.divider()
 
-mon_hp_pct  = int(hits/HITS_NEEDED*100)
-mon_bar_col = "#f44336" if mon_hp_pct>=66 else ("#FF9800" if mon_hp_pct>=33 else "#4CAF50")
+    # ── 👥 인력 ──
+    st.header("👥 인력 설정")
+    owner_works = st.toggle("사장 본인 근무", value=True)
+    full_time_count = st.number_input("정규직 바리스타 (명)", 0, 5, 1)
+    part_time_count = st.number_input("파트타임 직원 (명)", 0, 8, 2)
+    full_time_salary = st.number_input("정규직 월급 (만원)", 200, 350, 230, step=10)
+    part_time_hourly = st.number_input("파트타임 시급 (원)", 9860, 15000, 10030, step=100)
+    part_time_hours = st.slider("파트타임 일 근무시간", 3, 8, 5)
 
-floor_names = ["1층 슬라임 동굴","2층 고블린 땅굴","3층 오크 요새","4층 언데드 묘지","5층 마왕의 옥좌 👑"]
-st.markdown(f'<p class="pix" style="color:#ffd700;font-size:10px;text-align:center;padding:6px 0;text-shadow:0 0 8px #ffd700">⚔ 마왕의 성 ⚔</p>', unsafe_allow_html=True)
-st.markdown(f'<p class="pix" style="color:#b39ddb;font-size:9px;text-align:center;margin-bottom:4px">{floor_names[mi]}</p>', unsafe_allow_html=True)
+    st.divider()
 
-st.markdown(f"""
-<div class="battle">
-  <div style="text-align:center">
-    <div class="{hero_anim}">{hero_svg_str}</div>
-    <p class="pix" style="color:#81d4fa;font-size:8px;margin-top:6px">용사</p>
-  </div>
-  <div class="pix" style="color:#f44336;font-size:20px;align-self:center;text-shadow:0 0 10px #f44336">VS</div>
-  <div style="text-align:center">
-    <div class="{mon_anim}">{mon_svg_str}</div>
-    <p class="pix" style="color:#ef9a9a;font-size:8px;margin-top:6px">{mon_ico} {mon_name}</p>
-  </div>
-</div>""", unsafe_allow_html=True)
+    # ── 🏷️ 메뉴 전략 ──
+    st.header("🏷️ 메뉴 & 가격")
+    drink_price = st.number_input("대표 음료 가격 (원)", 3000, 8000, 4500, step=100)
+    avg_unit_price = st.number_input("평균 객단가 (원)", 3500, 12000, 5800, step=100)
+    cost_ratio = st.slider("원재료비율 (%)", 25, 50, 35) / 100
+    takeout_ratio = st.slider("테이크아웃 비율 (%)", 10, 80, 45) / 100
+    dessert_ratio = st.slider("디저트/사이드 구매율 (%)", 10, 50, 25) / 100
 
-dmg_bullets = "💥"*hits + "⬜"*(HITS_NEEDED-hits)
-st.markdown(f"""
-<div class="hud">
-  <span class="hudlbl">용사 {"❤️"*php}{"🖤"*(MAX_HP-php)}</span>
-  <span class="hudlbl" style="color:#ffd700">몬스터 {dmg_bullets}</span>
-</div>
-<div style="height:10px;background:#222;border:2px solid #444;border-radius:2px;margin-bottom:8px;overflow:hidden">
-  <div style="height:100%;width:{mon_hp_pct}%;background:{mon_bar_col};transition:width .4s"></div>
-</div>""", unsafe_allow_html=True)
+    st.divider()
 
-if dying:
-    st.markdown(f'<div class="res-ok">🏆 {mon_name} 격파! 다음 층으로!</div>', unsafe_allow_html=True)
-elif lc is True:
-    st.markdown(f'<div class="res-ok">✅ 크리티컬 히트! ({hits}/{HITS_NEEDED} 데미지)</div>', unsafe_allow_html=True)
-    st.markdown(f'<div class="exp">💡 {q["exp"]}</div>', unsafe_allow_html=True)
-elif lc is False:
-    st.markdown(f'<div class="res-ng">💥 오답! 몬스터의 역습! (정답: {q["ans"]})</div>', unsafe_allow_html=True)
-    st.markdown(f'<div class="exp">💡 {q["exp"]}</div>', unsafe_allow_html=True)
+    # ── 📅 운영 ──
+    st.header("📅 운영 설정")
+    open_hour = st.number_input("영업 시작 (시)", 6, 12, 8)
+    close_hour = st.number_input("영업 종료 (시)", 18, 24, 22)
+    holidays_per_month = st.number_input("월 휴무일 수", 0, 8, 4)
 
-if not dying:
-    st.markdown(f'<div class="qcard">❓ {q["q"]}</div>', unsafe_allow_html=True)
+    st.divider()
+    st.markdown('<div style="text-align:center; color:#A89279; font-size:0.75rem;">'
+                '© 2025 Cafe Simulator<br>Powered by Streamlit</div>', unsafe_allow_html=True)
 
-if not st.session_state.answered:
-    c1,c2,c3 = st.columns(3)
-    for col,opt,sk in zip([c1,c2,c3], q["opts"], SKILLS):
-        with col:
-            if st.button(f"{sk} {opt}", key=f"o_{mi}_{qi}_{opt}"):
-                correct = (opt == q["ans"])
-                st.session_state.answered = True
-                st.session_state.last_correct = correct
-                if correct:
-                    nh = hits + 1
-                    st.session_state.mon_hits = nh
-                    if nh >= HITS_NEEDED:
-                        st.session_state.mon_dying = True
-                else:
-                    st.session_state.player_hp = max(0, php-1)
-                st.rerun()
-else:
-    if dying:
-        nxt = mi + 1
-        label = "🏆 클리어!" if nxt>=len(MONSTERS) else (f"👑 최후의 결전!" if nxt==len(MONSTERS)-1 else f"⚔️ {floor_names[nxt]}으로!")
-        if st.button(label, type="primary", use_container_width=True):
-            st.session_state.mon_idx = nxt
-            st.session_state.mon_hits = 0
-            st.session_state.qpool_idx = 0
-            st.session_state.answered = False
-            st.session_state.last_correct = None
-            st.session_state.mon_dying = False
-            st.rerun()
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# 6. 핵심 계산 모델
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+operating_days = 30 - holidays_per_month
+operating_hours = close_hour - open_hour
+
+# ── 좌석 수 & 일 평균 고객 ──
+seats = int(area_pyeong * 0.8)
+seat_customers = seats * loc["turnover"]
+takeout_extra = seat_customers * (takeout_ratio / max(1 - takeout_ratio, 0.01))
+daily_customers = int(seat_customers + takeout_extra)
+
+# ── 매출 ──
+daily_revenue = daily_customers * avg_unit_price
+monthly_revenue = daily_revenue * operating_days
+
+# ── 인건비 ──
+ft_labor = full_time_salary * 10000 * full_time_count  # 원 단위
+pt_labor = part_time_hourly * part_time_hours * 26 * part_time_count
+total_labor = ft_labor + pt_labor
+
+# ── 인테리어 비용 (등급별) ──
+interior_per_pyeong = {"S급 (강남역·명동급)": 400, "A급 (홍대·이태원급)": 350,
+                       "B급 (일반 상가)": 280, "C급 (주택가)": 200}
+interior_cost = interior_per_pyeong[location_grade] * area_pyeong  # 만원
+
+# ── 초기 비용 ──
+startup_costs = {
+    "보증금": deposit,
+    "인테리어": interior_cost,
+    "커피머신 (에스프레소)": 1500,
+    "그라인더": 300,
+    "기타 장비 (제빙기·냉장고 등)": 800,
+    "가구/집기": area_pyeong * 40,
+    "간판/사이니지": 200,
+    "POS/결제 시스템": 150,
+    "초기 원재료": 200,
+    "인허가/법무 비용": 100,
+}
+
+# ── 월 고정비 (원 단위) ──
+insurance_rate = 0.095
+card_fee_rate = 0.015
+utility_per_pyeong = 80000  # 월 평당 전기수도가스
+
+monthly_fixed_costs = {
+    "임대료": monthly_rent * 10000,
+    "인건비": total_labor,
+    "4대보험 (사업주 부담)": int(total_labor * insurance_rate),
+    "전기/수도/가스": area_pyeong * utility_per_pyeong,
+    "통신/인터넷": 50000,
+    "카드수수료": int(monthly_revenue * card_fee_rate),
+    "소모품 (컵/냅킨 등)": 200000,
+    "마케팅/광고": 300000,
+    "감가상각비": int((interior_cost + 1500 + 300 + 800) * 10000 / 60),  # 5년 상각
+    "기타 잡비": 150000,
+}
+
+# ── 월 변동비 (원 단위) ──
+monthly_variable_costs = {
+    "원재료비": int(monthly_revenue * cost_ratio),
+}
+
+# ── 총계 ──
+total_startup = sum(startup_costs.values())
+startup_costs["예비 운영자금 (3개월)"] = int((sum(monthly_fixed_costs.values()) + sum(monthly_variable_costs.values())) / 10000 * 3)
+total_startup_with_reserve = sum(startup_costs.values())
+
+total_monthly_fixed = sum(monthly_fixed_costs.values())
+total_monthly_variable = sum(monthly_variable_costs.values())
+total_monthly_cost = total_monthly_fixed + total_monthly_variable
+monthly_profit = monthly_revenue - total_monthly_cost
+profit_margin = (monthly_profit / max(monthly_revenue, 1)) * 100
+
+# ── BEP ──
+bep_daily_revenue = total_monthly_fixed / max(1 - cost_ratio, 0.01) / max(operating_days, 1)
+bep_daily_customers = bep_daily_revenue / max(avg_unit_price, 1)
+months_to_recover = total_startup_with_reserve * 10000 / max(monthly_profit, 1) if monthly_profit > 0 else float('inf')
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# 7. 메인 헤더
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+st.markdown('<div class="gradient-title">☕ 카페 창업 시뮬레이터</div>'
+            '<div class="page-subtitle">현실 기반 비용 분석 · 매출 시뮬레이션 · 손익분기점 계산</div>',
+            unsafe_allow_html=True)
+
+# ── 요약 KPI ──
+k1, k2, k3, k4 = st.columns(4)
+with k1:
+    kpi_card("🏗️", "총 초기 투자금", f"{total_startup_with_reserve:,}만원")
+with k2:
+    kpi_card("💰", "월 예상 매출", f"{monthly_revenue:,.0f}원",
+             f"일 {daily_customers}명 × {avg_unit_price:,}원", "neutral")
+with k3:
+    profit_status = "positive" if monthly_profit > 0 else "negative"
+    kpi_card("📈", "월 순이익", f"{monthly_profit:,.0f}원",
+             f"순이익률 {profit_margin:.1f}%", profit_status)
+with k4:
+    if months_to_recover < float('inf') and months_to_recover > 0:
+        kpi_card("🎯", "투자금 회수", f"{months_to_recover:.1f}개월",
+                 "흑자 전환 시 기준", "positive" if months_to_recover < 36 else "negative")
     else:
-        if st.button("▶ 다음 문제", type="primary", use_container_width=True):
-            st.session_state.qpool_idx = qi+1
-            st.session_state.answered = False
-            st.session_state.last_correct = None
-            st.rerun()
+        kpi_card("🎯", "투자금 회수", "적자 상태",
+                 "수익 모델 재검토 필요", "negative")
 
-st.markdown(f'<p class="pix" style="color:#333;font-size:8px;text-align:center;margin-top:10px">FLOOR {mi+1}/5 | HP {"❤"*php}</p>', unsafe_allow_html=True)
+st.markdown("")
+st.divider()
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# 8. 탭 구성
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+tab1, tab2, tab3, tab4, tab5 = st.tabs(
+    ["🏠 초기 창업 비용", "💰 월간 손익", "📊 시간대·요일 분석", "🎯 손익분기점", "⚖️ 시나리오 비교"]
+)
+
+# ──────────────────────────────────────────────
+# 탭 1: 초기 창업 비용
+# ──────────────────────────────────────────────
+with tab1:
+    section_header("초기 투자 비용 내역")
+
+    s1, s2 = st.columns([3, 2])
+
+    with s1:
+        # 수평 막대 차트
+        cost_df = pd.DataFrame({"항목": list(startup_costs.keys()),
+                                "금액(만원)": list(startup_costs.values())})
+        cost_df = cost_df.sort_values("금액(만원)", ascending=True)
+        fig_bar = px.bar(cost_df, x="금액(만원)", y="항목", orientation="h",
+                         color_discrete_sequence=["#D4A574"])
+        fig_bar.update_traces(marker_line_width=0, opacity=0.9,
+                              text=cost_df["금액(만원)"].apply(lambda x: f"{x:,}만"),
+                              textposition="outside", textfont=dict(color="#F5D5A0", size=11))
+        apply_dark(fig_bar, "항목별 투자 비용")
+        fig_bar.update_layout(height=450)
+        st.plotly_chart(fig_bar, use_container_width=True)
+
+    with s2:
+        # 도넛 차트
+        fig_donut = px.pie(cost_df, names="항목", values="금액(만원)", hole=0.55,
+                           color_discrete_sequence=COLORS)
+        fig_donut.update_traces(textposition="inside", textinfo="percent",
+                                marker=dict(line=dict(color="#0E0B08", width=2)))
+        apply_dark(fig_donut, "비용 구성 비율")
+        fig_donut.update_layout(height=450)
+        st.plotly_chart(fig_donut, use_container_width=True)
+
+    st.markdown("")
+    section_header("비용 상세 내역")
+
+    # 테이블
+    detail_df = cost_df.sort_values("금액(만원)", ascending=False).copy()
+    detail_df["비율"] = (detail_df["금액(만원)"] / total_startup_with_reserve * 100).round(1)
+    detail_df["비율"] = detail_df["비율"].astype(str) + "%"
+    detail_df["금액(만원)"] = detail_df["금액(만원)"].apply(lambda x: f"{x:,}")
+    st.dataframe(detail_df, use_container_width=True, hide_index=True, height=400)
+
+    st.markdown("")
+    with st.expander("💡 비용 산출 근거 보기"):
+        st.markdown(f"""
+        | 항목 | 산출 근거 |
+        |------|---------|
+        | 보증금 | 사용자 직접 입력 ({deposit:,}만원) |
+        | 인테리어 | {area_pyeong}평 × {interior_per_pyeong[location_grade]}만/평 = {interior_cost:,}만원 |
+        | 커피머신 | 반자동 에스프레소 머신 기준 1,500만원 |
+        | 그라인더 | 상업용 전동 그라인더 300만원 |
+        | 기타 장비 | 제빙기 + 업소용 냉장고 + 블렌더 등 800만원 |
+        | 가구/집기 | {area_pyeong}평 × 40만/평 = {area_pyeong * 40:,}만원 |
+        | 예비 운영자금 | 월 고정비+변동비의 3개월분 |
+        """)
+
+# ──────────────────────────────────────────────
+# 탭 2: 월간 손익 시뮬레이션
+# ──────────────────────────────────────────────
+with tab2:
+    section_header("월간 손익 요약")
+
+    m1, m2, m3, m4 = st.columns(4)
+    m1.metric("월 매출", f"{monthly_revenue:,.0f}원")
+    m2.metric("월 고정비", f"{total_monthly_fixed:,.0f}원")
+    m3.metric("월 변동비", f"{total_monthly_variable:,.0f}원")
+    m4.metric("월 순이익", f"{monthly_profit:,.0f}원",
+              f"{profit_margin:.1f}%", delta_color="normal" if monthly_profit >= 0 else "inverse")
+
+    st.divider()
+
+    # ── 폭포 차트 (Waterfall) ──
+    section_header("매출 → 순이익 흐름 (Waterfall Chart)")
+
+    wf_labels = ["월 매출"]
+    wf_values = [monthly_revenue]
+    wf_measures = ["absolute"]
+
+    # 주요 비용 항목 (큰 항목 위주)
+    major_costs = sorted(monthly_fixed_costs.items(), key=lambda x: -x[1])
+    for name, val in major_costs:
+        wf_labels.append(name)
+        wf_values.append(-val)
+        wf_measures.append("relative")
+
+    wf_labels.append("원재료비")
+    wf_values.append(-monthly_variable_costs["원재료비"])
+    wf_measures.append("relative")
+
+    wf_labels.append("순이익")
+    wf_values.append(monthly_profit)
+    wf_measures.append("total")
+
+    fig_wf = go.Figure(go.Waterfall(
+        x=wf_labels, y=wf_values, measure=wf_measures,
+        connector=dict(line=dict(color="rgba(212,165,116,0.3)", width=1)),
+        increasing=dict(marker=dict(color="#6BCB77")),
+        decreasing=dict(marker=dict(color="#FF6B6B")),
+        totals=dict(marker=dict(color="#D4A574")),
+        textposition="outside",
+        text=[f"{abs(v):,.0f}" for v in wf_values],
+        textfont=dict(size=10, color="#F5D5A0"),
+    ))
+    apply_dark(fig_wf, "월 매출에서 순이익까지의 흐름")
+    fig_wf.update_layout(height=500, showlegend=False)
+    fig_wf.update_xaxes(tickangle=-45)
+    st.plotly_chart(fig_wf, use_container_width=True)
+
+    st.markdown("")
+    wc1, wc2 = st.columns(2)
+
+    with wc1:
+        section_header("비용 구성 (고정비 vs 변동비)")
+        comp_df = pd.DataFrame({
+            "구분": ["고정비", "변동비"],
+            "금액": [total_monthly_fixed, total_monthly_variable],
+        })
+        fig_comp = px.pie(comp_df, names="구분", values="금액", hole=0.55,
+                          color_discrete_sequence=["#D4A574", "#FF6B6B"])
+        fig_comp.update_traces(textposition="inside", textinfo="percent+label",
+                               marker=dict(line=dict(color="#0E0B08", width=2)))
+        apply_dark(fig_comp, "고정비 vs 변동비")
+        st.plotly_chart(fig_comp, use_container_width=True)
+
+    with wc2:
+        section_header("고정비 상세 비율")
+        fc_df = pd.DataFrame({"항목": list(monthly_fixed_costs.keys()),
+                               "금액": list(monthly_fixed_costs.values())})
+        fc_df = fc_df.sort_values("금액", ascending=True)
+        fig_fc = px.bar(fc_df, x="금액", y="항목", orientation="h",
+                        color_discrete_sequence=["#F5D5A0"])
+        fig_fc.update_traces(marker_line_width=0, opacity=0.9)
+        apply_dark(fig_fc, "월 고정비 항목별")
+        st.plotly_chart(fig_fc, use_container_width=True)
+
+    st.markdown("")
+    section_header("12개월 예상 수익 추이 (계절 변동 반영)")
+
+    months_list = list(SEASONAL_FACTOR.keys())
+    seasonal_revenue = [monthly_revenue * sf for sf in SEASONAL_FACTOR.values()]
+    seasonal_cost = [total_monthly_cost] * 12
+    seasonal_profit = [r - c for r, c in zip(seasonal_revenue, seasonal_cost)]
+
+    yr_df = pd.DataFrame({"월": months_list, "매출": seasonal_revenue,
+                           "총비용": seasonal_cost, "순이익": seasonal_profit})
+
+    fig_yr = go.Figure()
+    fig_yr.add_trace(go.Scatter(x=yr_df["월"], y=yr_df["매출"], name="매출",
+                                 fill="tozeroy", fillcolor="rgba(212,165,116,0.15)",
+                                 line=dict(color="#D4A574", width=2.5)))
+    fig_yr.add_trace(go.Scatter(x=yr_df["월"], y=yr_df["총비용"], name="총비용",
+                                 line=dict(color="#FF6B6B", width=2, dash="dash")))
+    fig_yr.add_trace(go.Bar(x=yr_df["월"], y=yr_df["순이익"], name="순이익",
+                             marker_color=["#6BCB77" if p >= 0 else "#FF6B6B" for p in seasonal_profit],
+                             opacity=0.6))
+    apply_dark(fig_yr, "월별 매출·비용·순이익 (계절 변동 반영)")
+    fig_yr.update_layout(height=400, barmode="overlay")
+    st.plotly_chart(fig_yr, use_container_width=True)
+
+# ──────────────────────────────────────────────
+# 탭 3: 시간대·요일 분석
+# ──────────────────────────────────────────────
+with tab3:
+    section_header("시간대별 예상 매출 분포")
+
+    # 운영 시간에 맞는 시간대만 필터링
+    filtered_hours = {k: v for k, v in HOUR_WEIGHT.items()
+                      if int(k.split("-")[0]) >= open_hour and int(k.split("-")[1]) <= close_hour}
+
+    if filtered_hours:
+        # 비중 정규화
+        total_w = sum(filtered_hours.values())
+        norm_hours = {k: v / total_w for k, v in filtered_hours.items()}
+
+        hour_rev = {k: daily_revenue * v for k, v in norm_hours.items()}
+        hour_cust = {k: daily_customers * v for k, v in norm_hours.items()}
+
+        hr_df = pd.DataFrame({"시간대": list(hour_rev.keys()),
+                               "예상매출": list(hour_rev.values()),
+                               "예상고객수": list(hour_cust.values())})
+
+        # 피크 시간 색상 구분
+        peak_threshold = hr_df["예상매출"].quantile(0.75)
+        hr_df["구분"] = hr_df["예상매출"].apply(lambda x: "🔥 피크 타임" if x >= peak_threshold else "일반 시간")
+
+        fig_hr = px.bar(hr_df, x="시간대", y="예상매출", color="구분",
+                        color_discrete_map={"🔥 피크 타임": "#D4A574", "일반 시간": "#5C3D2E"},
+                        text=hr_df["예상고객수"].apply(lambda x: f"{x:.0f}명"))
+        fig_hr.update_traces(textposition="outside", textfont=dict(color="#F5D5A0", size=10))
+        apply_dark(fig_hr, "시간대별 예상 매출 (상단: 예상 고객 수)")
+        fig_hr.update_layout(height=400)
+        st.plotly_chart(fig_hr, use_container_width=True)
+
+    st.markdown("")
+    tc1, tc2 = st.columns(2)
+
+    with tc1:
+        section_header("요일별 매출 패턴")
+        day_df = pd.DataFrame({"요일": list(DAY_WEIGHT.keys()),
+                                "매출": [daily_revenue * w for w in DAY_WEIGHT.values()]})
+        fig_day = px.bar(day_df, x="요일", y="매출", color_discrete_sequence=["#D4A574"])
+        fig_day.update_traces(marker_line_width=0, opacity=0.9,
+                              text=day_df["매출"].apply(lambda x: f"{x:,.0f}"),
+                              textposition="outside", textfont=dict(color="#F5D5A0", size=10))
+        apply_dark(fig_day, "요일별 일매출 예상")
+        st.plotly_chart(fig_day, use_container_width=True)
+
+    with tc2:
+        section_header("매출 구성 비율")
+        drink_rev = monthly_revenue * (1 - dessert_ratio)
+        dessert_rev = monthly_revenue * dessert_ratio
+        compose_df = pd.DataFrame({
+            "구분": ["음료", "디저트/사이드"],
+            "금액": [drink_rev, dessert_rev],
+        })
+        fig_compose = px.pie(compose_df, names="구분", values="금액", hole=0.55,
+                             color_discrete_sequence=["#D4A574", "#F5D5A0"])
+        fig_compose.update_traces(textposition="inside", textinfo="percent+label",
+                                   marker=dict(line=dict(color="#0E0B08", width=2)))
+        apply_dark(fig_compose, "음료 vs 디저트 매출")
+        st.plotly_chart(fig_compose, use_container_width=True)
+
+    st.markdown("")
+    section_header("요일 × 시간대 히트맵")
+
+    if filtered_hours:
+        days_list = list(DAY_WEIGHT.keys())
+        hours_list = list(norm_hours.keys())
+        heatmap_data = []
+        for d in days_list:
+            row = [daily_revenue * DAY_WEIGHT[d] * norm_hours[h] for h in hours_list]
+            heatmap_data.append(row)
+
+        fig_heat = go.Figure(data=go.Heatmap(
+            z=heatmap_data, x=hours_list, y=days_list,
+            colorscale=[[0, "#1C1410"], [0.5, "#8B6914"], [1, "#D4A574"]],
+            hoverongaps=False,
+            colorbar=dict(title="매출(원)"),
+        ))
+        apply_dark(fig_heat, "요일 × 시간대별 예상 매출 분포")
+        fig_heat.update_layout(height=350)
+        st.plotly_chart(fig_heat, use_container_width=True)
+
+# ──────────────────────────────────────────────
+# 탭 4: 손익분기점 분석
+# ──────────────────────────────────────────────
+with tab4:
+    section_header("손익분기점 (BEP) 핵심 지표")
+
+    b1, b2, b3 = st.columns(3)
+    with b1:
+        kpi_card("💵", "BEP 일매출", f"{bep_daily_revenue:,.0f}원",
+                 f"현재 일매출: {daily_revenue:,.0f}원",
+                 "positive" if daily_revenue >= bep_daily_revenue else "negative")
+    with b2:
+        kpi_card("👤", "BEP 일고객수", f"{bep_daily_customers:.0f}명",
+                 f"현재 예상: {daily_customers}명",
+                 "positive" if daily_customers >= bep_daily_customers else "negative")
+    with b3:
+        if months_to_recover < float('inf') and months_to_recover > 0:
+            recover_text = f"{months_to_recover:.1f}개월"
+            recover_delta = f"약 {months_to_recover / 12:.1f}년"
+            recover_status = "positive" if months_to_recover <= 36 else "negative"
+        else:
+            recover_text = "회수 불가"
+            recover_delta = "적자 상태"
+            recover_status = "negative"
+        kpi_card("⏱️", "투자금 회수 기간", recover_text, recover_delta, recover_status)
+
+    st.markdown("")
+    st.divider()
+
+    # ── BEP 교차 차트 ──
+    section_header("일 고객 수별 매출 vs 비용 (BEP 교차점)")
+
+    cust_range = list(range(10, max(daily_customers * 3, 200), 5))
+    revenue_line = [c * avg_unit_price for c in cust_range]
+    daily_fixed = total_monthly_fixed / operating_days
+    cost_line = [daily_fixed + c * avg_unit_price * cost_ratio for c in cust_range]
+
+    fig_bep = go.Figure()
+    fig_bep.add_trace(go.Scatter(x=cust_range, y=revenue_line, name="매출",
+                                  line=dict(color="#6BCB77", width=2.5)))
+    fig_bep.add_trace(go.Scatter(x=cust_range, y=cost_line, name="비용",
+                                  line=dict(color="#FF6B6B", width=2.5)))
+
+    # BEP 포인트 표시
+    fig_bep.add_vline(x=bep_daily_customers, line_dash="dash",
+                       line_color="#D4A574", annotation_text=f"BEP: {bep_daily_customers:.0f}명",
+                       annotation_font=dict(color="#D4A574", size=13))
+
+    # 현재 위치 표시
+    fig_bep.add_vline(x=daily_customers, line_dash="dot",
+                       line_color="#5DADE2", annotation_text=f"현재: {daily_customers}명",
+                       annotation_font=dict(color="#5DADE2", size=13),
+                       annotation_position="top left")
+
+    apply_dark(fig_bep, "손익분기점 분석")
+    fig_bep.update_layout(height=450, xaxis_title="일 고객 수 (명)", yaxis_title="금액 (원)")
+    st.plotly_chart(fig_bep, use_container_width=True)
+
+    st.markdown("")
+
+    # ── 투자금 회수 타임라인 ──
+    section_header("투자금 회수 타임라인 (36개월)")
+
+    cumulative = []
+    cum_sum = 0
+    month_labels = []
+    for i in range(36):
+        m_idx = i % 12
+        s_factor = list(SEASONAL_FACTOR.values())[m_idx]
+        m_rev = monthly_revenue * s_factor
+        m_profit = m_rev - total_monthly_cost
+        cum_sum += m_profit
+        cumulative.append(cum_sum)
+        month_labels.append(f"{i + 1}개월")
+
+    invest_line = total_startup_with_reserve * 10000
+
+    fig_recover = go.Figure()
+    fig_recover.add_trace(go.Scatter(
+        x=month_labels, y=cumulative, name="누적 순이익",
+        fill="tozeroy",
+        fillcolor="rgba(107,203,119,0.15)" if cumulative[-1] > 0 else "rgba(255,107,107,0.15)",
+        line=dict(color="#6BCB77" if cumulative[-1] > 0 else "#FF6B6B", width=2.5),
+    ))
+    fig_recover.add_hline(y=invest_line, line_dash="dash", line_color="#D4A574",
+                           annotation_text=f"초기 투자금: {invest_line:,.0f}원",
+                           annotation_font=dict(color="#D4A574", size=12))
+    fig_recover.add_hline(y=0, line_dash="solid", line_color="rgba(255,255,255,0.2)")
+
+    apply_dark(fig_recover, "누적 순이익 vs 초기 투자금")
+    fig_recover.update_layout(height=400, xaxis_title="경과 개월", yaxis_title="누적 금액 (원)")
+    st.plotly_chart(fig_recover, use_container_width=True)
+
+    # 회수 시점 메시지
+    recovered_month = None
+    for i, c in enumerate(cumulative):
+        if c >= invest_line:
+            recovered_month = i + 1
+            break
+
+    if recovered_month:
+        st.success(f"✅ 투자금 회수 예상 시점: **{recovered_month}개월** 후 (약 {recovered_month / 12:.1f}년)")
+    elif monthly_profit > 0:
+        st.warning(f"⚠️ 36개월 내 투자금 회수 어려움. 예상 회수 기간: **{months_to_recover:.0f}개월** ({months_to_recover/12:.1f}년)")
+    else:
+        st.error("❌ 현재 설정으로는 적자 상태입니다. 매출을 늘리거나 비용을 줄여야 합니다.")
+
+# ──────────────────────────────────────────────
+# 탭 5: 시나리오 비교
+# ──────────────────────────────────────────────
+with tab5:
+    section_header("시나리오 변동폭 설정")
+
+    sv1, sv2 = st.columns(2)
+    with sv1:
+        optimistic_boost = st.slider("낙관적 시나리오 — 고객수 증가율 (%)", 5, 50, 20)
+    with sv2:
+        pessimistic_drop = st.slider("비관적 시나리오 — 고객수 감소율 (%)", 5, 50, 20)
+
+    price_opt_boost = optimistic_boost // 2
+    price_pes_drop = pessimistic_drop // 2
+
+    def calc_scenario(cust_mult, price_mult):
+        s_daily_cust = int(daily_customers * cust_mult)
+        s_unit_price = int(avg_unit_price * price_mult)
+        s_daily_rev = s_daily_cust * s_unit_price
+        s_monthly_rev = s_daily_rev * operating_days
+        s_variable = int(s_monthly_rev * cost_ratio)
+        s_card_fee = int(s_monthly_rev * card_fee_rate)
+        s_fixed = total_monthly_fixed - monthly_fixed_costs["카드수수료"] + s_card_fee
+        s_total_cost = s_fixed + s_variable
+        s_profit = s_monthly_rev - s_total_cost
+        s_margin = (s_profit / max(s_monthly_rev, 1)) * 100
+        s_bep_daily = s_fixed / max(1 - cost_ratio, 0.01) / max(operating_days, 1)
+        s_recover = total_startup_with_reserve * 10000 / max(s_profit, 1) if s_profit > 0 else float('inf')
+        return {
+            "일고객수": s_daily_cust, "객단가": s_unit_price,
+            "월매출": s_monthly_rev, "월비용": s_total_cost,
+            "순이익": s_profit, "순이익률": s_margin,
+            "BEP일매출": s_bep_daily, "회수기간": s_recover,
+        }
+
+    base = calc_scenario(1.0, 1.0)
+    opti = calc_scenario(1 + optimistic_boost / 100, 1 + price_opt_boost / 100)
+    pess = calc_scenario(1 - pessimistic_drop / 100, 1 - price_pes_drop / 100)
+
+    st.markdown("")
+    section_header("3-시나리오 비교 테이블")
+
+    comp_table = pd.DataFrame({
+        "지표": ["일 고객수", "평균 객단가", "월 매출", "월 비용", "월 순이익", "순이익률", "투자금 회수"],
+        "😰 비관적": [
+            f"{pess['일고객수']}명", f"{pess['객단가']:,}원",
+            f"{pess['월매출']:,.0f}원", f"{pess['월비용']:,.0f}원",
+            f"{pess['순이익']:,.0f}원", f"{pess['순이익률']:.1f}%",
+            f"{pess['회수기간']:.1f}개월" if pess['회수기간'] < float('inf') else "회수 불가",
+        ],
+        "📊 기본": [
+            f"{base['일고객수']}명", f"{base['객단가']:,}원",
+            f"{base['월매출']:,.0f}원", f"{base['월비용']:,.0f}원",
+            f"{base['순이익']:,.0f}원", f"{base['순이익률']:.1f}%",
+            f"{base['회수기간']:.1f}개월" if base['회수기간'] < float('inf') else "회수 불가",
+        ],
+        "🚀 낙관적": [
+            f"{opti['일고객수']}명", f"{opti['객단가']:,}원",
+            f"{opti['월매출']:,.0f}원", f"{opti['월비용']:,.0f}원",
+            f"{opti['순이익']:,.0f}원", f"{opti['순이익률']:.1f}%",
+            f"{opti['회수기간']:.1f}개월" if opti['회수기간'] < float('inf') else "회수 불가",
+        ],
+    })
+    st.dataframe(comp_table, use_container_width=True, hide_index=True)
+
+    st.markdown("")
+    section_header("시나리오별 매출 · 비용 · 순이익 비교")
+
+    scenarios = ["😰 비관적", "📊 기본", "🚀 낙관적"]
+    revenues = [pess["월매출"], base["월매출"], opti["월매출"]]
+    costs = [pess["월비용"], base["월비용"], opti["월비용"]]
+    profits = [pess["순이익"], base["순이익"], opti["순이익"]]
+
+    fig_sc = go.Figure()
+    fig_sc.add_trace(go.Bar(name="매출", x=scenarios, y=revenues,
+                             marker_color="#D4A574", opacity=0.9))
+    fig_sc.add_trace(go.Bar(name="비용", x=scenarios, y=costs,
+                             marker_color="#FF6B6B", opacity=0.9))
+    fig_sc.add_trace(go.Bar(name="순이익", x=scenarios, y=profits,
+                             marker_color="#6BCB77", opacity=0.9))
+    apply_dark(fig_sc, "시나리오별 비교")
+    fig_sc.update_layout(barmode="group", height=400)
+    st.plotly_chart(fig_sc, use_container_width=True)
+
+    st.markdown("")
+    section_header("36개월 누적 순이익 추이 비교")
+
+    def calc_cumulative(scenario):
+        cum = []
+        s = 0
+        for i in range(36):
+            sf = list(SEASONAL_FACTOR.values())[i % 12]
+            s += scenario["월매출"] * sf / monthly_revenue * scenario["순이익"] if monthly_revenue > 0 else scenario["순이익"]
+            cum.append(s)
+        return cum
+
+    cum_base = calc_cumulative(base)
+    cum_opti = calc_cumulative(opti)
+    cum_pess = calc_cumulative(pess)
+
+    fig_cum = go.Figure()
+    fig_cum.add_trace(go.Scatter(x=list(range(1, 37)), y=cum_pess, name="😰 비관적",
+                                  line=dict(color="#FF6B6B", width=2)))
+    fig_cum.add_trace(go.Scatter(x=list(range(1, 37)), y=cum_base, name="📊 기본",
+                                  line=dict(color="#D4A574", width=2.5)))
+    fig_cum.add_trace(go.Scatter(x=list(range(1, 37)), y=cum_opti, name="🚀 낙관적",
+                                  line=dict(color="#6BCB77", width=2)))
+    fig_cum.add_hline(y=invest_line, line_dash="dash", line_color="#F5D5A0",
+                       annotation_text="초기 투자금", annotation_font=dict(color="#F5D5A0"))
+    fig_cum.add_hline(y=0, line_dash="solid", line_color="rgba(255,255,255,0.2)")
+
+    apply_dark(fig_cum, "시나리오별 36개월 누적 순이익")
+    fig_cum.update_layout(height=400, xaxis_title="경과 개월", yaxis_title="누적 금액 (원)")
+    st.plotly_chart(fig_cum, use_container_width=True)
+
+    # ── 리스크 평가 ──
+    st.markdown("")
+    section_header("종합 리스크 평가")
+
+    if pess["순이익"] > 0:
+        st.success("✅ **안정적**: 비관적 시나리오에서도 흑자를 유지합니다. 리스크가 낮은 사업 모델입니다.")
+    elif base["순이익"] > 0:
+        st.warning("⚠️ **보통**: 기본 시나리오에서는 흑자이나, 비관적 상황에서 적자 가능성이 있습니다. "
+                   "비용 절감 또는 차별화 전략을 준비하세요.")
+    else:
+        st.error("❌ **위험**: 기본 시나리오에서도 적자입니다. 사업 모델을 근본적으로 재검토해야 합니다. "
+                 "면적 축소, 인력 조정, 객단가 인상 등을 고려하세요.")
+
+    # 구체적 개선 제안
+    if monthly_profit < 0:
+        with st.expander("💡 수익 개선 제안 보기"):
+            suggestions = []
+            if monthly_rent * 10000 / monthly_revenue > 0.15:
+                suggestions.append(f"🏠 **임대료 비중 과다** ({monthly_rent * 10000 / monthly_revenue * 100:.1f}%): "
+                                   f"매출 대비 임대료 비중이 15%를 초과합니다. 더 작은 면적이나 낮은 등급의 상권을 고려하세요.")
+            if total_labor / monthly_revenue > 0.25:
+                suggestions.append(f"👥 **인건비 비중 과다** ({total_labor / monthly_revenue * 100:.1f}%): "
+                                   f"매출 대비 인건비가 25%를 초과합니다. 사장 직접 근무 비율을 높이거나 파트타임을 줄여보세요.")
+            if cost_ratio > 0.38:
+                suggestions.append(f"📦 **원재료비 비중 과다** ({cost_ratio * 100:.0f}%): "
+                                   f"업계 평균(30~35%)를 초과합니다. 원두 납품처 변경이나 메뉴 포트폴리오를 최적화하세요.")
+            if not suggestions:
+                suggestions.append("전반적인 비용 구조 개선이 필요합니다. 면적 축소, 위치 변경, 메뉴 전략 수정을 종합적으로 검토하세요.")
+            for s in suggestions:
+                st.markdown(f"- {s}")
