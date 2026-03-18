@@ -10,8 +10,9 @@ def img_to_b64(path):
     return ""
 
 _DIR = pathlib.Path(__file__).parent
-OPENING_B64 = img_to_b64(_DIR / "quiz_opening.png")
-ENDING_B64  = img_to_b64(_DIR / "quiz_ending.png")
+OPENING_B64  = img_to_b64(_DIR / "quiz_opening.png")
+ENDING_B64   = img_to_b64(_DIR / "quiz_ending.png")
+GAMEOVER_B64 = img_to_b64(_DIR / "quiz_gameover.png")
 
 P = {
     '.':None,'K':'#111','W':'#FFF',
@@ -133,48 +134,48 @@ if "screen" not in st.session_state: init()
 # ─── CSS ──────────────────────────────────────────────────────────────────
 st.markdown("""
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Noto+Sans+KR:wght@700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Noto+Sans+KR:wght@400;700;900&display=swap');
 .stApp{background:#0d0d1a;}
 .pix{font-family:'Press Start 2P',cursive;}
 .battle{background:linear-gradient(180deg,#1a0830 0%,#0d0d2a 60%,#050a05 100%);
-  border:4px solid #ffd700;padding:18px 24px;
+  border:5px solid #ffd700;padding:24px 30px;
   display:flex;justify-content:space-between;align-items:flex-end;
-  min-height:230px;position:relative;box-shadow:0 0 30px rgba(255,215,0,.2);}
+  min-height:280px;position:relative;box-shadow:0 0 40px rgba(255,215,0,.25);border-radius:8px;}
 .battle::after{content:'';position:absolute;inset:0;pointer-events:none;
-  background:repeating-linear-gradient(transparent,transparent 3px,rgba(0,0,0,.1) 4px);}
-.hud{display:flex;justify-content:space-between;align-items:center;margin:6px 0;}
-.hudlbl{font-family:'Press Start 2P',cursive;font-size:9px;color:#bbb;}
-.qcard{background:rgba(0,0,0,.7);border:3px solid #5c6bc0;border-radius:4px;
-  padding:14px;color:#fffde7;font-family:'Noto Sans KR',sans-serif;font-size:16px;font-weight:700;margin:10px 0;}
-.res-ok{background:rgba(0,255,100,.1);border:2px solid #00e676;border-radius:4px;
-  padding:10px;color:#00e676;font-family:'Press Start 2P',cursive;font-size:10px;text-align:center;margin:6px 0;}
-.res-ng{background:rgba(244,67,54,.1);border:2px solid #f44336;border-radius:4px;
-  padding:10px;color:#ff5252;font-family:'Press Start 2P',cursive;font-size:10px;text-align:center;margin:6px 0;}
-.exp{background:rgba(255,255,255,.05);border-left:4px solid #ffd700;border-radius:0 4px 4px 0;
-  padding:10px 14px;color:#e0e0e0;font-family:'Noto Sans KR',sans-serif;font-size:14px;margin:6px 0;}
+  background:repeating-linear-gradient(transparent,transparent 3px,rgba(0,0,0,.08) 4px);border-radius:8px;}
+.hud{display:flex;justify-content:space-between;align-items:center;margin:8px 0;}
+.hudlbl{font-family:'Press Start 2P',cursive;font-size:11px;color:#ccc;}
+.qcard{background:rgba(0,0,0,.7);border:3px solid #5c6bc0;border-radius:8px;
+  padding:18px 20px;color:#fffde7;font-family:'Noto Sans KR',sans-serif;font-size:20px;font-weight:700;margin:12px 0;line-height:1.6;}
+.res-ok{background:rgba(0,255,100,.12);border:2px solid #00e676;border-radius:6px;
+  padding:14px;color:#00e676;font-family:'Noto Sans KR',sans-serif;font-size:16px;font-weight:700;text-align:center;margin:8px 0;}
+.res-ng{background:rgba(244,67,54,.12);border:2px solid #f44336;border-radius:6px;
+  padding:14px;color:#ff5252;font-family:'Noto Sans KR',sans-serif;font-size:16px;font-weight:700;text-align:center;margin:8px 0;}
+.exp{background:rgba(255,255,255,.06);border-left:5px solid #ffd700;border-radius:0 6px 6px 0;
+  padding:14px 18px;color:#e0e0e0;font-family:'Noto Sans KR',sans-serif;font-size:16px;margin:8px 0;line-height:1.6;}
 .combo-box{background:linear-gradient(135deg,rgba(255,165,0,.2),rgba(255,215,0,.1));
-  border:2px solid #ffa500;border-radius:6px;padding:8px;text-align:center;margin:4px 0;
+  border:2px solid #ffa500;border-radius:8px;padding:12px;text-align:center;margin:6px 0;
   animation:comboPulse .6s ease-in-out;}
-.coin-box{background:rgba(255,215,0,.1);border:1px solid #ffd700;border-radius:4px;
-  padding:6px 12px;display:inline-block;margin:4px;}
+.coin-box{background:rgba(255,215,0,.1);border:1px solid #ffd700;border-radius:6px;
+  padding:8px 14px;display:inline-block;margin:4px;font-size:14px;}
 .reward-box{background:linear-gradient(135deg,rgba(156,39,176,.2),rgba(103,58,183,.2));
-  border:2px solid #ab47bc;border-radius:8px;padding:12px;text-align:center;margin:8px 0;
+  border:2px solid #ab47bc;border-radius:10px;padding:16px;text-align:center;margin:10px 0;
   animation:rewardPop .5s ease;}
-.encourage{background:rgba(33,150,243,.1);border:1px solid #42a5f5;border-radius:6px;
-  padding:8px 12px;color:#90caf9;font-family:'Noto Sans KR',sans-serif;font-size:14px;text-align:center;margin:4px 0;}
-.items-bar{background:rgba(255,255,255,.05);border:1px solid #444;border-radius:4px;
-  padding:6px 10px;display:flex;gap:8px;flex-wrap:wrap;margin:4px 0;}
-.item-badge{background:#2d2d44;border:1px solid #666;border-radius:4px;padding:3px 8px;
-  font-size:12px;color:#e0e0e0;font-family:'Noto Sans KR',sans-serif;}
-.progress-bar{background:rgba(0,0,0,.3);border-radius:10px;height:20px;margin:8px 0;overflow:hidden;
-  border:2px solid #444;}
-.progress-fill{height:100%;border-radius:8px;transition:width .5s;
+.encourage{background:rgba(33,150,243,.1);border:1px solid #42a5f5;border-radius:8px;
+  padding:12px 16px;color:#90caf9;font-family:'Noto Sans KR',sans-serif;font-size:16px;text-align:center;margin:6px 0;}
+.items-bar{background:rgba(255,255,255,.05);border:1px solid #444;border-radius:6px;
+  padding:8px 12px;display:flex;gap:10px;flex-wrap:wrap;margin:6px 0;}
+.item-badge{background:#2d2d44;border:1px solid #666;border-radius:6px;padding:5px 10px;
+  font-size:14px;color:#e0e0e0;font-family:'Noto Sans KR',sans-serif;}
+.progress-bar{background:rgba(0,0,0,.3);border-radius:12px;height:26px;margin:10px 0;overflow:hidden;
+  border:2px solid #555;}
+.progress-fill{height:100%;border-radius:10px;transition:width .5s;
   background:linear-gradient(90deg,#4CAF50,#8BC34A,#CDDC39,#FFC107,#FF9800);
-  display:flex;align-items:center;justify-content:center;font-size:10px;color:#fff;
+  display:flex;align-items:center;justify-content:center;font-size:12px;color:#fff;
   font-family:'Press Start 2P',cursive;text-shadow:1px 1px 2px rgba(0,0,0,.5);}
-.stButton>button{width:100%;border-radius:4px;border:3px solid #5c6bc0;background:#0d0d2a;
-  color:#fff;font-family:'Noto Sans KR',sans-serif;font-weight:700;font-size:16px;
-  box-shadow:3px 3px 0 #5c6bc0;transition:all .15s;padding:12px 8px;}
+.stButton>button{width:100%;border-radius:6px;border:3px solid #5c6bc0;background:#0d0d2a;
+  color:#fff;font-family:'Noto Sans KR',sans-serif;font-weight:700;font-size:18px;
+  box-shadow:3px 3px 0 #5c6bc0;transition:all .15s;padding:14px 10px;}
 .stButton>button:hover{background:#5c6bc0;box-shadow:none;transform:translate(3px,3px);}
 @keyframes hatk{0%{transform:translateX(0) scaleX(1);}40%{transform:translateX(30px) scaleX(1.15);}100%{transform:translateX(0) scaleX(1);}}
 @keyframes hhit{0%{transform:translateX(0);filter:none;}30%{transform:translateX(-22px);filter:brightness(3) hue-rotate(180deg);}100%{transform:translateX(0);filter:none;}}
@@ -206,8 +207,8 @@ if screen == "title":
         st.markdown(f'<img src="{OPENING_B64}" style="width:100%;border:4px solid #ffd700;border-radius:6px;box-shadow:0 0 40px rgba(255,215,0,.4);margin-bottom:8px">', unsafe_allow_html=True)
     st.markdown("""
     <div style="text-align:center;padding:16px 0 8px">
-      <p class="pix pulse" style="color:#ffd700;font-size:15px;margin:0">⚔ 마왕의 성 ⚔</p>
-      <p class="pix" style="color:#b39ddb;font-size:9px;margin-top:12px">QUIZ DUNGEON</p>
+      <p class="pix pulse" style="color:#ffd700;font-size:22px;margin:0">⚔ 마왕의 성 ⚔</p>
+      <p class="pix" style="color:#b39ddb;font-size:13px;margin-top:14px">QUIZ DUNGEON</p>
     </div>
     """, unsafe_allow_html=True)
 
@@ -223,7 +224,7 @@ if screen == "title":
          퀴즈를 풀어 몬스터를 물리치고 마왕의 성을 정복하라!<br>
          <b>3번 정답</b>을 맞추면 몬스터를 격파합니다.<br>
          오답 시 <b>❤️ 한 개</b>가 깎입니다. HP 5개로 도전!<br><br>
-         🧪 <b>힌트 포션</b>: 2회 사용 가능! 오답 하나를 없애줘요.<br>
+         🧪 <b>힌트 포션</b>: 2회 사용 가능! 오답 하나를 없애줘요<br>
          ⚡ <b>콤보 시스템</b>: 연속 정답 시 보너스 코인!<br>
          🎁 <b>보상 아이템</b>: 몬스터를 처치하면 아이템 획득!
       </p>
@@ -246,12 +247,14 @@ php = st.session_state.player_hp
 hero_name = st.session_state.hero_name
 
 if php <= 0:
+    if GAMEOVER_B64:
+        st.markdown(f'<img src="{GAMEOVER_B64}" style="width:100%;border:4px solid #f44336;border-radius:8px;box-shadow:0 0 40px rgba(244,67,54,.4);margin-bottom:10px">', unsafe_allow_html=True)
     st.markdown(f"""
     <div style="text-align:center;padding:20px">
-      <p class="pix" style="color:#f44336;font-size:20px;text-shadow:0 0 20px #f44336">💀 GAME OVER 💀</p>
-      <p style="color:#aaa;font-family:'Noto Sans KR',sans-serif;font-size:15px">{hero_name}(이)가 {mi+1}층에서 쓰러졌습니다...</p>
-      <p style="color:#bbb;font-family:'Noto Sans KR',sans-serif;font-size:13px">더 많은 상식을 쌓고 다시 도전하세요!</p>
-      <p style="color:#ffd700;font-family:'Noto Sans KR',sans-serif;font-size:14px;margin-top:10px">
+      <p class="pix" style="color:#f44336;font-size:26px;text-shadow:0 0 20px #f44336">💀 GAME OVER 💀</p>
+      <p style="color:#ccc;font-family:'Noto Sans KR',sans-serif;font-size:18px;margin-top:8px">{hero_name}(이)가 {mi+1}층에서 쓰러졌습니다...</p>
+      <p style="color:#bbb;font-family:'Noto Sans KR',sans-serif;font-size:15px">더 많은 상식을 쌓고 다시 도전하세요!</p>
+      <p style="color:#ffd700;font-family:'Noto Sans KR',sans-serif;font-size:15px;margin-top:12px">
         📊 전적: 정답 {st.session_state.total_correct}개 | 오답 {st.session_state.total_wrong}개 | 💰 {st.session_state.coins} 코인 | ⚡ 최대콤보 {st.session_state.max_combo}
       </p>
     </div>""", unsafe_allow_html=True)
@@ -280,12 +283,12 @@ if mi >= len(MONSTERS):
     mc = st.session_state.max_combo
     st.markdown(f"""
     <div style="text-align:center;padding:16px 0">
-      <p class="pix pulse" style="color:#ffd700;font-size:16px">👑 DUNGEON CLEAR! 👑</p>
-      <p style="color:#e0e0e0;font-family:'Noto Sans KR',sans-serif;font-size:16px;margin-top:10px">
+      <p class="pix pulse" style="color:#ffd700;font-size:22px">👑 DUNGEON CLEAR! 👑</p>
+      <p style="color:#e0e0e0;font-family:'Noto Sans KR',sans-serif;font-size:20px;margin-top:12px">
          <b>{hero_name}</b>(이)가 마왕을 물리치고 성을 탈환했습니다!</p>
-      <p class="pix" style="color:{rank_color};font-size:24px;margin:10px 0">RANK: {rank}</p>
-      <p style="color:#b39ddb;font-family:'Noto Sans KR',sans-serif;font-size:14px">🏅 칭호: {rank_title}</p>
-      <p style="color:#f48fb1;font-family:'Noto Sans KR',sans-serif;font-size:15px">
+      <p class="pix" style="color:{rank_color};font-size:32px;margin:12px 0">RANK: {rank}</p>
+      <p style="color:#b39ddb;font-family:'Noto Sans KR',sans-serif;font-size:16px">🏅 칭호: {rank_title}</p>
+      <p style="color:#f48fb1;font-family:'Noto Sans KR',sans-serif;font-size:18px">
          잔여 HP: {"❤️"*php}{"🖤"*(MAX_HP-php)}</p>
     </div>""", unsafe_allow_html=True)
 
@@ -347,27 +350,27 @@ st.markdown(f"""
   <div class="progress-fill" style="width:{overall_pct}%">{overall_pct}%</div>
 </div>""", unsafe_allow_html=True)
 
-st.markdown(f'<p class="pix" style="color:#ffd700;font-size:10px;text-align:center;padding:4px 0;text-shadow:0 0 8px #ffd700">⚔ 마왕의 성 ⚔</p>', unsafe_allow_html=True)
-st.markdown(f'<p class="pix" style="color:#b39ddb;font-size:9px;text-align:center;margin-bottom:4px">{floor_names[mi]}</p>', unsafe_allow_html=True)
+st.markdown(f'<p class="pix" style="color:#ffd700;font-size:14px;text-align:center;padding:6px 0;text-shadow:0 0 10px #ffd700">⚔ 마왕의 성 ⚔</p>', unsafe_allow_html=True)
+st.markdown(f'<p class="pix" style="color:#b39ddb;font-size:12px;text-align:center;margin-bottom:6px">{floor_names[mi]}</p>', unsafe_allow_html=True)
 
 # 상단 HUD: 코인 + 콤보 + 힌트
 st.markdown(f"""
 <div style="display:flex;justify-content:space-between;align-items:center;margin:4px 0">
-  <span class="coin-box" style="font-size:12px">💰 {coins} 코인</span>
-  <span class="coin-box" style="font-size:12px">⚡ {combo} 콤보</span>
-  <span class="coin-box" style="font-size:12px">🧪 포션 {st.session_state.hints_left}개</span>
+  <span class="coin-box">💰 {coins} 코인</span>
+  <span class="coin-box">⚡ {combo} 콤보</span>
+  <span class="coin-box">🧪 포션 {st.session_state.hints_left}개</span>
 </div>""", unsafe_allow_html=True)
 
 st.markdown(f"""
 <div class="battle">
   <div style="text-align:center">
     <div class="{hero_anim}">{hero_svg_str}</div>
-    <p class="pix" style="color:#81d4fa;font-size:8px;margin-top:6px">{hero_name}</p>
+    <p class="pix" style="color:#81d4fa;font-size:11px;margin-top:8px">{hero_name}</p>
   </div>
-  <div class="pix" style="color:#f44336;font-size:20px;align-self:center;text-shadow:0 0 10px #f44336">VS</div>
+  <div class="pix" style="color:#f44336;font-size:26px;align-self:center;text-shadow:0 0 14px #f44336">VS</div>
   <div style="text-align:center">
     <div class="{mon_anim}">{mon_svg_str}</div>
-    <p class="pix" style="color:#ef9a9a;font-size:8px;margin-top:6px">{mon_ico} {mon_name}</p>
+    <p class="pix" style="color:#ef9a9a;font-size:11px;margin-top:8px">{mon_ico} {mon_name}</p>
   </div>
 </div>""", unsafe_allow_html=True)
 
