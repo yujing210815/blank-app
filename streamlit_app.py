@@ -3,8 +3,10 @@ import random, os
 
 st.set_page_config(page_title="마왕의 성", page_icon="⚔️", layout="centered")
 
-OPENING_IMG = r"C:\Users\USER\.gemini\antigravity\brain\d5cbda8b-6b06-4fc0-b622-9c6461733d6d\quiz_opening_1773806888558.png"
-ENDING_IMG  = r"C:\Users\USER\.gemini\antigravity\brain\d5cbda8b-6b06-4fc0-b622-9c6461733d6d\quiz_ending_1773806901175.png"
+import pathlib
+_DIR = pathlib.Path(__file__).parent
+OPENING_IMG = str(_DIR / "quiz_opening.png")
+ENDING_IMG  = str(_DIR / "quiz_ending.png")
 
 P = {
     '.':None,'K':'#111','W':'#FFF',
