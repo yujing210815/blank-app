@@ -32,9 +32,20 @@ h1, h2, h3 { color: #f1f5f9 !important; }
 @st.cache_data
 def load_data():
     path = pathlib.Path(__file__).parent / "202501-air.csv"
-    df = pd.read_csv(path, encoding="cp949")
+    if not path.exists():
+        return None
+    # 인코딩: cp949(한국 윈도우) → 실패 시 utf-8 fallback
+    for enc in ["cp949", "utf-8", "euc-kr"]:
+        try:
+            df = pd.read_csv(path, encoding=enc)
+            break
+        except (UnicodeDecodeError, Exception):
+            continue
+    else:
+        return None
     df.columns = ["지역","망","측정소코드","측정소명","측정일시","SO2","CO","O3","NO2","PM10","PM25","주소"]
-    df["측정일시"] = pd.to_datetime(df["측정일시"].astype(str), format="%Y%m%d%H")
+    df["측정일시"] = pd.to_datetime(df["측정일시"].astype(str), format="%Y%m%d%H", errors="coerce")
+    df = df.dropna(subset=["측정일시"])
     df["날짜"] = df["측정일시"].dt.date
     df["시간"] = df["측정일시"].dt.hour
     df["월일"] = df["측정일시"].dt.strftime("%m-%d")
@@ -44,6 +55,11 @@ def load_data():
     return df
 
 df = load_data()
+
+if df is None:
+    st.error("⚠️ **데이터 파일을 찾을 수 없습니다.**")
+    st.info("`202501-air.csv` 파일이 `app.py`와 같은 폴더에 있어야 합니다.\n\nGit 저장소에 CSV 파일도 함께 올려주세요.")
+    st.stop()
 
 # ─── 헤더 ────────────────────────────────────────────────────────────────────
 st.title("🌬️ 2025년 1월 전국 대기질 대시보드")
