@@ -3,10 +3,17 @@ import random, os
 
 st.set_page_config(page_title="마왕의 성", page_icon="⚔️", layout="centered")
 
-import pathlib
+import base64, pathlib
+
+def img_to_b64(path):
+    p = pathlib.Path(path)
+    if p.exists():
+        return "data:image/png;base64," + base64.b64encode(p.read_bytes()).decode()
+    return ""
+
 _DIR = pathlib.Path(__file__).parent
-OPENING_IMG = str(_DIR / "quiz_opening.png")
-ENDING_IMG  = str(_DIR / "quiz_ending.png")
+OPENING_B64 = img_to_b64(_DIR / "quiz_opening.png")
+ENDING_B64  = img_to_b64(_DIR / "quiz_ending.png")
 
 P = {
     '.':None,'K':'#111','W':'#FFF',
@@ -153,8 +160,8 @@ screen = st.session_state.screen
 # 🎬 TITLE SCREEN
 # ════════════════════════════════════════════════════════════
 if screen == "title":
-    if os.path.exists(OPENING_IMG):
-        st.image(OPENING_IMG, use_container_width=True)
+    if OPENING_B64:
+        st.markdown(f'<img src="{OPENING_B64}" style="width:100%;border:4px solid #ffd700;border-radius:6px;box-shadow:0 0 40px rgba(255,215,0,.4);margin-bottom:8px">', unsafe_allow_html=True)
     st.markdown("""
     <div style="text-align:center;padding:16px 0 8px">
       <p class="pix pulse" style="color:#ffd700;font-size:15px;margin:0">⚔ 마왕의 성 ⚔</p>
@@ -197,8 +204,8 @@ if php <= 0:
 # ════════════════════════════════════════════════════════════
 if mi >= len(MONSTERS):
     st.balloons()
-    if os.path.exists(ENDING_IMG):
-        st.image(ENDING_IMG, use_container_width=True)
+    if ENDING_B64:
+        st.markdown(f'<img src="{ENDING_B64}" style="width:100%;border:4px solid #ffd700;border-radius:6px;box-shadow:0 0 40px rgba(255,215,0,.4);margin-bottom:8px">', unsafe_allow_html=True)
     rank = "S" if php==MAX_HP else ("A" if php>=4 else ("B" if php>=3 else ("C" if php>=2 else "D")))
     rank_color = {"S":"#FFD700","A":"#C0C0C0","B":"#CD7F32","C":"#78909C","D":"#f44336"}[rank]
     st.markdown(f"""
