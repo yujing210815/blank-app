@@ -235,14 +235,64 @@ QUIZ_POOL = [
    {"q":"옥수수 한 줄의 알갱이 수는 항상?","opts":["짝수","홀수","상관없다"],"ans":"짝수","exp":"옥수수 알갱이는 항상 짝수 줄! 씨앗이 쌍으로 발달하는 식물 구조 때문입니다."}],
 ]
 
+MATH_POOL = [
+  # 1층 — 기초 연산
+  [{"q":"7 × 8 은?","opts":["54","56","64"],"ans":"56","exp":"구구단 7단! 7 × 8 = 56 입니다."},
+   {"q":"100 - 45 은?","opts":["45","55","65"],"ans":"55","exp":"100 - 45 = 55 입니다."},
+   {"q":"12 + 15 + 8 은?","opts":["35","33","32"],"ans":"35","exp":"12 + 8 = 20, 20 + 15 = 35!"},
+   {"q":"48 ÷ 6 은?","opts":["7","8","9"],"ans":"8","exp":"구구단 6단! 6 × 8 = 48 입니다."},
+   {"q":"3의 4배에서 5를 빼면?","opts":["7","12","15"],"ans":"7","exp":"3 × 4 = 12, 12 - 5 = 7!"},
+   {"q":"(5 + 3) × 2 는?","opts":["11","16","13"],"ans":"16","exp":"괄호 먼저! 8 × 2 = 16 입니다."}],
+
+  # 2층 — 분수/소수/비율
+  [{"q":"1/2 + 1/4 는?","opts":["2/6","3/4","1/8"],"ans":"3/4","exp":"1/2은 2/4입니다. 2/4 + 1/4 = 3/4!"},
+   {"q":"1.5 + 2.3 은?","opts":["3.8","4.8","3.5"],"ans":"3.8","exp":"소수점 자리를 맞춰 더하면 3.8 입니다."},
+   {"q":"1시간의 1/3은 몇 분?","opts":["15분","20분","30분"],"ans":"20분","exp":"1시간은 60분. 60 ÷ 3 = 20분!"},
+   {"q":"백분율 50%를 분수로 나타내면?","opts":["1/2","1/4","1/5"],"ans":"1/2","exp":"50%는 50/100, 약분하면 1/2 입니다!"},
+   {"q":"0.25를 백분율(%)로 나타내면?","opts":["2.5%","25%","250%"],"ans":"25%","exp":"소수에 100을 곱하면 백분율! 0.25 × 100 = 25%"},
+   {"q":"1에서 1/3을 빼면?","opts":["1/3","2/3","0"],"ans":"2/3","exp":"1은 3/3이므로, 3/3 - 1/3 = 2/3!"}],
+
+  # 3층 — 도형 및 측정
+  [{"q":"삼각형의 세 내각의 합은?","opts":["180도","360도","90도"],"ans":"180도","exp":"모든 삼각형의 내각의 합은 항상 180도입니다."},
+   {"q":"하루는 총 몇 분일까?","opts":["720분","1440분","3600분"],"ans":"1440분","exp":"24시간 × 60분 = 1440분입니다!"},
+   {"q":"정사각형의 한 변의 길이가 5cm일 때, 둘레는?","opts":["15cm","20cm","25cm"],"ans":"20cm","exp":"정사각형은 네 변이 같습니다. 5 × 4 = 20cm!"},
+   {"q":"1킬로미터(km)는 몇 미터(m)?","opts":["100m","1000m","10000m"],"ans":"1000m","exp":"kilo(킬로)는 1000을 의미합니다. 1km = 1000m!"},
+   {"q":"직각(Right angle)은 몇 도입니까?","opts":["45도","90도","180도"],"ans":"90도","exp":"수직으로 만나는 각도인 직각은 90도입니다."},
+   {"q":"원의 중심을 지나는 선분의 이름은?","opts":["반지름","지름","원주"],"ans":"지름","exp":"원에 있는 선분 중 가장 긴 선분이 바로 '지름'입니다!"}],
+
+  # 4층 — 패턴과 논리
+  [{"q":"2, 4, 8, 16 다음 숫자는?","opts":["24","32","64"],"ans":"32","exp":"앞의 숫자에 2를 곱하는 패턴! 16 × 2 = 32."},
+   {"q":"1, 4, 9, 16 다음 숫자는?","opts":["25","24","20"],"ans":"25","exp":"제곱수 패턴! 1²=1, 2²=4, 3²=9, 4²=16, 5²=25!"},
+   {"q":"모든 홀수에 2를 곱하면 어떤 수가 될까?","opts":["홀수","짝수","알 수 없음"],"ans":"짝수","exp":"어떤 정수든 2를 곱하면 무조건 짝수가 됩니다!"},
+   {"q":"1부터 10까지 모두 더하면?","opts":["50","55","60"],"ans":"55","exp":"가우스의 덧셈법: (1+10)×5 = 55 입니다."},
+   {"q":"x + 5 = 12 일 때, x의 값은?","opts":["6","7","8"],"ans":"7","exp":"양변에서 5를 빼면 x = 12 - 5 = 7 입니다."},
+   {"q":"고양이 3마리와 거미 2마리의 다리는 총 몇 개?","opts":["20개","24개","28개"],"ans":"28개","exp":"고양이(4)×3=12, 거미(8)×2=16.  12+16 = 28개!"}],
+
+  # 5층 — 마왕의 까다로운 수학
+  [{"q":"소수(Prime number) 중 유일한 짝수는?","opts":["2","4","짝수 소수는 없다"],"ans":"2","exp":"소수는 1과 자기 자신만으로 나누어지는 수! 2는 유일한 짝수 소수입니다."},
+   {"q":"어떤 수를 0으로 나누면 어떻게 될까?","opts":["0","1","계산할 수 없다"],"ans":"계산할 수 없다","exp":"수학에서 0으로 나누는 것(Division by zero)은 정의되지 않습니다!"},
+   {"q":"-3 × -5 의 결과는?","opts":["-15","15","-8"],"ans":"15","exp":"음수 곱하기 음수는 양수가 됩니다! (- × - = +)"},
+   {"q":"π(파이)의 대략적인 값은?","opts":["3.14","3.41","3.12"],"ans":"3.14","exp":"원주율(파이)은 약 3.14159... 입니다."},
+   {"q":"루트 81 (√81) 은 얼마입니까?","opts":["7","8","9"],"ans":"9","exp":"9의 제곱이 81이므로, √81 = 9 입니다."},
+   {"q":"100의 10%의 10%는?","opts":["1","10","0.1"],"ans":"1","exp":"100의 10%는 10, 그 10의 10%는 1입니다!"}],
+]
+
+DUNGEONS = {
+    "🧠 기본 상식 던전": QUIZ_POOL,
+    "🧮 수학 기초 던전": MATH_POOL
+}
+
+
 HITS_NEEDED = 3
 MAX_HP = 5
 MAX_HINTS = 2
 
-def init():
-    shuffled = [random.sample(pool, len(pool)) for pool in QUIZ_POOL]
+def init(dungeon_name="🧠 기본 상식 던전"):
+    pool_data = DUNGEONS.get(dungeon_name, QUIZ_POOL)
+    shuffled = [random.sample(pool, len(pool)) for pool in pool_data]
     st.session_state.update({
         "screen":"title",
+        "dungeon_name":dungeon_name,
         "mon_idx":0,"mon_hits":0,"qpool_idx":0,
         "player_hp":MAX_HP,"answered":False,"last_correct":None,
         "mon_dying":False,"shuffled_quiz":shuffled,
@@ -347,6 +397,13 @@ screen = st.session_state.screen
 
 # ═══════════════ TITLE ═══════════════
 if screen == "title":
+    with st.sidebar:
+        st.markdown(f'<p class="pix" style="color:#ffd700;font-size:16px;margin-bottom:8px">🗺️ 던전 선택</p>', unsafe_allow_html=True)
+        st.markdown("<p style='color:#ccc;font-family:\"Noto Sans KR\",sans-serif;font-size:14px'>도전할 퀴즈 주제를 골라주세요!</p>", unsafe_allow_html=True)
+        dungeon_choice = st.radio("던전 종류", list(DUNGEONS.keys()), label_visibility="collapsed")
+        st.markdown("<hr style='border-color:#555'>", unsafe_allow_html=True)
+        st.markdown(f"<p style='color:#b388ff;font-family:\"Noto Sans KR\",sans-serif;font-size:14px;font-weight:bold'>현재 선택:<br>&rsaquo; {dungeon_choice}</p>", unsafe_allow_html=True)
+
     if OPENING_B64:
         st.markdown(f'<img src="{OPENING_B64}" style="width:100%;border:4px solid #ffd700;border-radius:10px;box-shadow:0 0 40px rgba(255,215,0,.4);margin-bottom:8px">', unsafe_allow_html=True)
     st.markdown("""<div style="text-align:center;padding:16px 0 8px">
@@ -365,6 +422,8 @@ if screen == "title":
     with col2:
         if st.button("🗡️  게임 시작!", use_container_width=True, type="primary"):
             st.session_state.hero_name = name.strip() if name.strip() else "용사"
+            init(dungeon_choice)
+            st.session_state.hero_name = name.strip() if name.strip() else "용사" # init 덮어쓰기 복구
             st.session_state.screen = "game"; st.rerun()
     st.stop()
 
@@ -425,7 +484,9 @@ if php<=0:
     </div>""", unsafe_allow_html=True)
     col1,col2,col3=st.columns([1,2,1])
     with col2:
-        if st.button("🔄 게임 다시 시작!", use_container_width=True): init(); st.rerun()
+        if st.button("🔄 게임 다시 시작!", use_container_width=True): 
+            dung = st.session_state.get("dungeon_name", "🧠 기본 상식 던전")
+            init(dung); st.rerun()
     st.stop()
 
 # ═══════════════ CLEAR ═══════════════
@@ -451,7 +512,9 @@ if mi>=len(MONSTERS):
         st.markdown(f'<div class="items-bar" style="justify-content:center">🎒 {items_html}</div>', unsafe_allow_html=True)
     col1,col2,col3=st.columns([1,2,1])
     with col2:
-        if st.button("🔄 다시 도전",use_container_width=True,type="primary"): init(); st.rerun()
+        if st.button("🔄 다시 도전",use_container_width=True,type="primary"): 
+            dung = st.session_state.get("dungeon_name", "🧠 기본 상식 던전")
+            init(dung); st.rerun()
     st.stop()
 
 # ═══════════════ GAME ═══════════════
