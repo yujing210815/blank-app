@@ -278,7 +278,7 @@ MATH_POOL = [
 ]
 
 DUNGEONS = {
-    "🧠 기본 상식 던전": QUIZ_POOL,
+    "🧠 재미 상식 던전": QUIZ_POOL,
     "🧮 수학 기초 던전": MATH_POOL
 }
 
