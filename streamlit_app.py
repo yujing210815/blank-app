@@ -13,6 +13,7 @@ _DIR = pathlib.Path(__file__).parent
 OPENING_B64  = img_to_b64(_DIR / "quiz_opening.png")
 ENDING_B64   = img_to_b64(_DIR / "quiz_ending.png")
 GAMEOVER_B64 = img_to_b64(_DIR / "quiz_gameover.png")
+BATTLE_BG_B64 = img_to_b64(_DIR / "battle_bg.png")
 
 # 캐릭터 이미지 로드
 HERO_B64    = img_to_b64(_DIR / "sprite_hero.png")
@@ -99,22 +100,26 @@ st.markdown("""
 
 /* 배틀 필드 */
 .battle{
-  background:linear-gradient(180deg,#1a0830 0%,#12102e 40%,#0a1a10 80%,#050a05 100%);
   border:5px solid #ffd700;padding:20px 16px;
   display:flex;justify-content:space-between;align-items:flex-end;
   min-height:300px;position:relative;
-  box-shadow:0 0 50px rgba(255,215,0,.2),inset 0 -40px 60px rgba(0,0,0,.4);
-  border-radius:10px;overflow:hidden;}
-.battle::before{content:'';position:absolute;bottom:0;left:0;right:0;height:60px;
-  background:linear-gradient(0deg,#1a2810,transparent);pointer-events:none;}
+  box-shadow:0 0 50px rgba(255,215,0,.2);
+  border-radius:10px;overflow:hidden;
+  background-color:#0a0a15;
+  background-size:cover;background-position:center;}
+.battle::before{content:'';position:absolute;inset:0;
+  background:linear-gradient(0deg,rgba(0,0,0,.6) 0%,rgba(0,0,0,.1) 40%,rgba(0,0,0,.2) 100%);
+  pointer-events:none;z-index:0;}
 .battle::after{content:'';position:absolute;inset:0;pointer-events:none;
-  background:repeating-linear-gradient(transparent,transparent 3px,rgba(0,0,0,.06) 4px);border-radius:10px;}
+  background:repeating-linear-gradient(transparent,transparent 3px,rgba(0,0,0,.04) 4px);border-radius:10px;z-index:0;}
 
-/* 캐릭터 이미지 */
-.char-img{width:140px;height:140px;object-fit:contain;image-rendering:pixelated;
-  filter:drop-shadow(0 4px 12px rgba(0,0,0,.5));}
-.mon-img{width:160px;height:160px;object-fit:contain;image-rendering:pixelated;
-  filter:drop-shadow(0 4px 16px rgba(255,0,0,.3));}
+/* 캐릭터 이미지 - mix-blend-mode로 어두운 배경 제거 */
+.char-img{width:150px;height:150px;object-fit:contain;image-rendering:pixelated;
+  mix-blend-mode:screen;
+  filter:drop-shadow(0 0 8px rgba(100,180,255,.4)) contrast(1.1) brightness(1.05);}
+.mon-img{width:170px;height:170px;object-fit:contain;image-rendering:pixelated;
+  mix-blend-mode:screen;
+  filter:drop-shadow(0 0 10px rgba(255,50,50,.4)) contrast(1.1) brightness(1.05);}
 
 /* HUD */
 .hud{display:flex;justify-content:space-between;align-items:center;margin:8px 0;}
@@ -381,9 +386,10 @@ if st.session_state.collected_effects:
 # 🎮 배틀 필드 (이미지 기반!)
 hero_img_tag = f'<img src="{HERO_B64}" class="char-img">' if HERO_B64 else '<div style="font-size:60px">🦸</div>'
 mon_img_tag  = f'<img src="{mon_b64}" class="mon-img">' if mon_b64 else f'<div style="font-size:60px">{mon_ico}</div>'
+bg_style = f'background-image:url({BATTLE_BG_B64});' if BATTLE_BG_B64 else ''
 
 st.markdown(f"""
-<div class="battle">
+<div class="battle" style="{bg_style}">
   <div style="text-align:center;z-index:1">
     <div class="{hero_anim}">{hero_img_tag}</div>
     <p class="pix" style="color:#81d4fa;font-size:11px;margin-top:8px">{hero_name}</p>
