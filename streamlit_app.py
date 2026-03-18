@@ -182,7 +182,7 @@ SKILLS = ["🔥","⚔️","🌪️"]
 REWARDS = [
     ("🗡️ 슬라임 단검", "정답 시 코인 +5 보너스!", "coin_bonus"),
     ("🛡️ 고블린 방패", "오답 1회 데미지 무효!", "shield"),
-    ("💪 오크의 완력", "다음 몬스터 2타 격파!", "power_hit"),
+    ("💪 오크의 완력", "4층부터 몬스터 2타 격파!", "power_hit"),
     ("👻 유령 망토",   "힌트 포션 1개 추가!", "hint_bonus"),
     ("👑 마왕의 왕관", "클리어 시 코인 2배!", "coin_double"),
 ]
@@ -275,9 +275,6 @@ st.markdown("""
   border-radius:10px;overflow:hidden;
   background-color:#0a0a15;
   background-size:cover;background-position:center;}
-.battle::before{content:'';position:absolute;inset:0;
-  background:linear-gradient(0deg,rgba(0,0,0,.5) 0%,rgba(0,0,0,.05) 40%,rgba(0,0,0,.15) 100%);
-  pointer-events:none;z-index:0;}
 .battle::after{content:'';position:absolute;inset:0;pointer-events:none;
   background:repeating-linear-gradient(transparent,transparent 3px,rgba(0,0,0,.04) 4px);
   border-radius:10px;z-index:0;}
@@ -378,6 +375,10 @@ if screen == "shop":
     st.markdown(f"""<div style="text-align:center;padding:16px 0">
       <p class="pix" style="color:#b388ff;font-size:18px">🛒 마법 상점 🛒</p>
       <p style="color:#ffd740;font-family:'Noto Sans KR',sans-serif;font-size:20px;font-weight:700;margin-top:6px">💰 {coins} 코인</p>
+      <div style="display:flex;justify-content:center;gap:16px;margin-top:8px">
+        <span style="color:#69f0ae;font-size:14px">보유 포션: {st.session_state.hints_left}개</span>
+        <span style="color:#ff8a80;font-size:14px">현재 HP: {st.session_state.player_hp}/{MAX_HP}</span>
+      </div>
     </div>""", unsafe_allow_html=True)
     c1,c2,c3=st.columns(3)
     with c1:
@@ -402,7 +403,7 @@ if screen == "shop":
           <p style="color:#aaa;font-size:13px">오답 1회 무효</p>
           <p style="color:#ffd740;font-size:15px;font-weight:700">💰 40</p></div>""", unsafe_allow_html=True)
         if st.button("🛡️ 구매" if can3 else ("✅ 있음" if hs else "🚫 부족"), key="bs", disabled=not can3):
-            st.session_state.coins-=40; st.session_state.shield_active=True; st.rerun()
+            st.session_state.coins-=40; st.session_state.shield_active=True; st.session_state.shield_used=False; st.rerun()
     st.markdown("<br>", unsafe_allow_html=True)
     col1,col2,col3=st.columns([1,2,1])
     with col2:
@@ -418,13 +419,13 @@ if php<=0:
         st.markdown(f'<img src="{GAMEOVER_B64}" style="width:100%;border:4px solid #f44336;border-radius:10px;box-shadow:0 0 40px rgba(244,67,54,.4);margin-bottom:10px">', unsafe_allow_html=True)
     st.markdown(f"""<div style="text-align:center;padding:20px">
       <p class="pix" style="color:#f44336;font-size:26px;text-shadow:0 0 20px #f44336">💀 GAME OVER 💀</p>
-      <p style="color:#ccc;font-family:'Noto Sans KR',sans-serif;font-size:18px;margin-top:8px">{hero_name}(이)가 {mi+1}층에서 쓰러졌습니다...</p>
+      <p style="color:#ccc;font-family:'Noto Sans KR',sans-serif;font-size:18px;margin-top:8px">{hero_name}(이)가 <b>{mi+1}층</b>의 퀴즈에서 쓰러졌습니다...</p>
       <p style="color:#ffd700;font-family:'Noto Sans KR',sans-serif;font-size:15px;margin-top:12px">
         📊 정답 {st.session_state.total_correct} · 오답 {st.session_state.total_wrong} · 💰 {st.session_state.coins} · ⚡최대콤보 {st.session_state.max_combo}</p>
     </div>""", unsafe_allow_html=True)
     col1,col2,col3=st.columns([1,2,1])
     with col2:
-        if st.button("🔄 처음부터!", use_container_width=True): init(); st.rerun()
+        if st.button("🔄 게임 다시 시작!", use_container_width=True): init(); st.rerun()
     st.stop()
 
 # ═══════════════ CLEAR ═══════════════
@@ -492,8 +493,14 @@ if st.session_state.collected_effects:
     st.markdown(f'<div style="text-align:center;margin:4px 0">{eff_html}</div>', unsafe_allow_html=True)
 
 bg_style=f'background-image:url({BATTLE_BG_B64});' if BATTLE_BG_B64 else ''
+floor_tints = [
+    "rgba(0,50,0,0.5)", "rgba(50,50,0,0.5)", "rgba(50,0,0,0.5)", "rgba(20,0,50,0.6)", "rgba(80,0,20,0.7)"
+]
+tint = floor_tints[mi] if mi < len(floor_tints) else "rgba(0,0,0,0.5)"
+
 st.markdown(f"""
 <div class="battle" style="{bg_style}">
+  <div style="position:absolute;inset:0;background:linear-gradient(0deg,{tint} 0%,rgba(0,0,0,0.1) 40%,rgba(0,0,0,0.3) 100%);pointer-events:none;z-index:0;"></div>
   <div style="text-align:center;z-index:1">
     <div class="{hero_anim}">{hero_svg_str}</div>
     <p class="pix" style="color:#81d4fa;font-size:11px;margin-top:8px">{hero_name}</p>
@@ -536,7 +543,7 @@ elif lc is False:
     st.markdown(f'<div class="exp">💡 {q["exp"]}</div>', unsafe_allow_html=True)
 
 if not dying:
-    st.markdown(f'<div class="qcard">❓ {q["q"]}</div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="qcard"><span style="color:#ffd740;font-size:14px">Q{qi+1}.</span> <br>{q["q"]}</div>', unsafe_allow_html=True)
 
 if not st.session_state.answered:
     if not st.session_state.hint_used_this_q and st.session_state.hints_left>0:
@@ -569,7 +576,9 @@ if not st.session_state.answered:
                         st.session_state.collected_effects.append(ek)
                         st.session_state.coins+=50
                         if ek=="hint_bonus": st.session_state.hints_left+=1
-                        if ek=="shield" and not st.session_state.shield_active: st.session_state.shield_active=True
+                        if ek=="shield":
+                            st.session_state.shield_active=True
+                            st.session_state.shield_used=False
                 else:
                     st.session_state.combo=0; st.session_state.total_wrong+=1
                     if st.session_state.shield_active and not st.session_state.shield_used:
@@ -580,6 +589,10 @@ if not st.session_state.answered:
                     st.session_state.encourage_msg=random.choice(ENCOURAGE)
                 st.rerun()
 else:
+    # 오답 시 정답을 강조해서 보여주기
+    if not dying and lc is False:
+         st.markdown(f'<div style="text-align:center;margin:8px 0"><span style="background:rgba(76,175,80,0.2);color:#69f0ae;padding:8px 16px;border-radius:20px;border:1px solid #4CAF50;font-weight:bold;font-family:\'Noto Sans KR\',sans-serif">🟢 올바른 정답: {q["ans"]}</span></div>', unsafe_allow_html=True)
+
     if dying:
         nxt=mi+1
         if nxt>=len(MONSTERS):
