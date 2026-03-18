@@ -10,25 +10,172 @@ def img_to_b64(path):
     return ""
 
 _DIR = pathlib.Path(__file__).parent
-OPENING_B64  = img_to_b64(_DIR / "quiz_opening.png")
-ENDING_B64   = img_to_b64(_DIR / "quiz_ending.png")
-GAMEOVER_B64 = img_to_b64(_DIR / "quiz_gameover.png")
+OPENING_B64   = img_to_b64(_DIR / "quiz_opening.png")
+ENDING_B64    = img_to_b64(_DIR / "quiz_ending.png")
+GAMEOVER_B64  = img_to_b64(_DIR / "quiz_gameover.png")
 BATTLE_BG_B64 = img_to_b64(_DIR / "battle_bg.png")
 
-# 캐릭터 이미지 로드
-HERO_B64    = img_to_b64(_DIR / "sprite_hero.png")
-SLIME_B64   = img_to_b64(_DIR / "sprite_slime.png")
-GOBLIN_B64  = img_to_b64(_DIR / "sprite_goblin.png")
-ORC_B64     = img_to_b64(_DIR / "sprite_orc.png")
-UNDEAD_B64  = img_to_b64(_DIR / "sprite_undead.png")
-DEMON_B64   = img_to_b64(_DIR / "sprite_demon.png")
+# ────────────────────────────────────────────────────────────
+# 업그레이드 도트 스프라이트 (더 많은 색상 · 디테일 · 음영)
+# ────────────────────────────────────────────────────────────
+P = {
+    '.':None,'K':'#111','W':'#FFF',
+    'c':'#CC1100','C':'#FF3322','n':'#FDBCB4','m':'#8B4513',
+    'B':'#1565C0','b':'#1E88E5','Y':'#FFD700','S':'#E0E0E0','s':'#9E9E9E',
+    'T':'#3E2723','t':'#6D4C41','R':'#E53935',
+    'G':'#2ECC40','g':'#1A8026','e':'#FFEE00',
+    'j':'#5D9B3A','J':'#3A6B20','p':'#7B1FA2','q':'#4A148C',
+    'O':'#D84315','o':'#BF360C','A':'#546E7A','a':'#78909C',
+    'U':'#E0E0E0','u':'#9E9E9E','V':'#1A237E','v':'#283593',
+    'X':'#B71C1C','x':'#D32F2F','Z':'#4A148C','z':'#7B1FA2',
+    'F':'#FF6D00','f':'#FFD740','H':'#880E4F',
+    'l':'#64B5F6','L':'#1976D2','w':'#FFCCBC',
+    'i':'#FF7043','I':'#BF360C','d':'#FFB74D','D':'#F57C00',
+    'k':'#222','h':'#CE93D8','y':'#FFF176',
+    'r':'#EF5350',
+}
+
+def svg(rows, px=10):
+    mw = max(len(r) for r in rows)
+    out = []
+    for y, row in enumerate(rows):
+        for x, ch in enumerate(row):
+            c = P.get(ch)
+            if c:
+                out.append(f'<rect x="{x*px}" y="{y*px}" width="{px}" height="{px}" fill="{c}"/>')
+    return (f'<svg xmlns="http://www.w3.org/2000/svg" width="{mw*px}" height="{len(rows)*px}" '
+            f'style="image-rendering:pixelated;display:block;">{"".join(out)}</svg>')
+
+# 용사 (아이들 / 공격 / 피격) — 더 큰 크기, 더 많은 색상
+HERO_IDLE = [
+    "....KccccK....",
+    "...KcCCCCcK...",
+    "...KcCCCCcK...",
+    "..KKnnnnnnKK..",
+    "..KnKnnnnKnK..",
+    "..KnnwnnwnnK..",
+    "..KnnmmmnnK...",
+    "..KnnnnnnnK...",
+    ".KBBBBBBBBK...",
+    ".KBbBYBBbBK...",
+    ".KBBBBBBBBKsS.",
+    ".KBBBBBBBBKsS.",
+    "..KBBBBBBK....",
+    "..KBK..KBK....",
+    "..KBK..KBK....",
+    "..KTK..KTK....",
+]
+HERO_ATK = [
+    "....KccccK........",
+    "...KcCCCCcK.......",
+    "...KcCCCCcK.......",
+    "..KKnnnnnnKK......",
+    "..KnKnnnnK.K......",
+    "..KnnwnnwnnK......",
+    "..KnmmmmmnnK......",
+    "..KnnnnnnnKsSSSSS.",
+    ".KBBBBBBBBKSSSSSS.",
+    ".KBbBYBBbBKssssss.",
+    ".KBBBBBBBBKssss...",
+    "..KBBBBBBK........",
+    "..KBK..KBK........",
+    "..KBK..KBK........",
+    "..KTK..KTK........",
+]
+HERO_HIT = [
+    "....KccccK....",
+    "...KcCCCCcK...",
+    "...KcCCCCcK...",
+    "..KKnnnnnnKK..",
+    "..KnKKnnKKnK..",
+    "..KnnwnnwnnK..",
+    "..KnKKKKKnnK..",
+    "..KnnnnnnnK...",
+    ".KBBBBBBBBK...",
+    ".KBbBYBBbBK...",
+    ".KBBBBBBBBK...",
+    "..KBBBBBBK....",
+    "..KBK..KBK....",
+    "..KBK..KBK....",
+    "..KTK..KTK....",
+]
+
+SLIME_SPR = [
+    "....KKKK....",
+    "..KGGGGGK...",
+    ".KGGgGGGGGK.",
+    "KGGGGGGGGgGK",
+    "KGGeGGGGeGGK",
+    "KGGgGGGGgGGK",
+    "KGGGGGGGGGgK",
+    "KGKWWWWWWKgK",
+    ".KGGGGGGgGK.",
+    "..KGGGGGGK..",
+    "..KGK..KGK..",
+]
+GOB_SPR = [
+    "...KKKKKKK...",
+    "..KJjjjJjjK..",
+    ".KJjjJJjjjJK.",
+    "KJjKWgKWgjjJK",
+    "KJjKOgKOgjjJK",
+    ".KJjjJJjjjJK.",
+    ".KJjKwKwKjJK.",
+    "..KKpBpBpKK..",
+    "...KjjjjjK...",
+    "..KjK...KjK..",
+    "..KJK...KJK..",
+]
+ORC_SPR = [
+    "...KOOOOOOKKK.",
+    "..KOOoOOOoOOK.",
+    ".KOOOOOOOOoOK.",
+    ".KOKnKKKnKOK..",
+    ".KOOOOOOOoOK..",
+    ".KOKwwKwwKOK..",
+    "KKAAAAAAAAKKK.",
+    "KAaAAAAaAAAaK.",
+    "KAAARRRRAAAAaK",
+    "..KAK...KAK...",
+    "..KOKK.KKOK...",
+    "..KtKK.KKtK...",
+]
+UND_SPR = [
+    "..KVVVVVVVKK..",
+    ".KVVvVVVvVVK..",
+    ".KVVVVVVVvVK..",
+    ".KVKuVVKuVvK..",
+    ".KVVVVVVVvVK..",
+    ".KVKKKKKKvVK..",
+    "KKAAAAAAAAAKK.",
+    "KAaAAAAaAAAaK.",
+    "KAARRRRAAAAaK.",
+    "..KAK...KAK...",
+    "..KVKK.KKVK...",
+    "..KuKK.KKuK...",
+]
+DEM_SPR = [
+    "FKK......KKF..",
+    "FKZZzZZzZZKF..",
+    "KZZZzZZzZZZZK.",
+    "KZKZZZZZZKZzK.",
+    "KZKxZZKxZZZZK.",
+    "KZzZZZZZZZzZK.",
+    "KZKHZzHZZZZZK.",
+    ".KZZZZZZZZZK..",
+    "KZXxXxXxXZZK..",
+    "KZZZXxXZZZZK..",
+    "..KZK...KZK...",
+    "..KZKF.FKZK...",
+    "..KfKK.KKfK...",
+]
 
 MONSTERS = [
-    ("슬라임", SLIME_B64, "💚"),
-    ("고블린", GOBLIN_B64, "👺"),
-    ("오크전사", ORC_B64, "💪"),
-    ("언데드", UNDEAD_B64, "💀"),
-    ("마왕", DEMON_B64, "😈"),
+    ("슬라임", SLIME_SPR, "💚"),
+    ("고블린", GOB_SPR, "👺"),
+    ("오크전사", ORC_SPR, "💪"),
+    ("언데드", UND_SPR, "💀"),
+    ("마왕", DEM_SPR, "😈"),
 ]
 SKILLS = ["🔥","⚔️","🌪️"]
 
@@ -41,29 +188,51 @@ REWARDS = [
 ]
 
 COMBO_MSG = ["","","🔥 2콤보! 잘한다!","⚡ 3콤보! 천재인가?!","🌟 4콤보! 무적이야!","💎 5콤보!! 전설의 용사!!","🏆 6콤보!!! 역대급!!!"]
-ENCOURAGE = ["괜찮아! 다시 도전해보자! 💪","아깝다! 다음엔 맞출 수 있어! 🍀","실수는 누구나 해! 힘내! ⭐","틀려도 괜찮아, 새로운 걸 배웠잖아! 📚","용사는 포기하지 않아! 다시 가보자! 🗡️"]
+ENCOURAGE = ["괜찮아! 다시 도전해보자! 💪","아깝다! 다음엔 맞출 수 있어! 🍀","실수는 누구나 해! 힘내! ⭐","틀려도 괜찮아, 새로운 걸 배웠잖아! 📚","용사는 포기하지 않아! 🗡️"]
 
+# ────────────────────────────────────────────────────────────
+# 퀴즈 풀 (확장)
+# ────────────────────────────────────────────────────────────
 QUIZ_POOL = [
+  # 1층 — 생활/음식/자연 상식
   [{"q":"딸기의 달콤한 빨간 부위는 식물학적으로?","opts":["열매(과육)","꽃받침(화탁)","씨앗"],"ans":"꽃받침(화탁)","exp":"우리가 먹는 붉은 부위는 꽃받침이 발달한 것! 진짜 열매는 표면의 작은 씨앗들입니다."},
    {"q":"낙타 혹 속에 가득 들어있는 것은?","opts":["물","지방","근육"],"ans":"지방","exp":"낙타의 혹은 지방 저장소! 이 지방 분해로 에너지와 수분을 얻습니다."},
-   {"q":"세계 최초로 생긴 패스트푸드 프랜차이즈는?","opts":["맥도날드","버거킹","A&W 레스토랑"],"ans":"A&W 레스토랑","exp":"A&W는 1919년 시작! 맥도날드는 1940년이에요."},
-   {"q":"딸기는 장미과의 식물이다?","opts":["참이다","거짓이다","장미과가 아닌 딸기과"],"ans":"참이다","exp":"딸기는 장미과(Rosaceae)에 속합니다. 장미, 사과, 복숭아도 같은 과!"}],
-  [{"q":"역사상 가장 많이 팔린 비디오 게임은?","opts":["마인크래프트","테트리스","GTA 5"],"ans":"마인크래프트","exp":"마인크래프트는 3억 장 이상 팔려 역대 1위입니다!"},
-   {"q":"빛의 속도에 가장 가까운 것은?","opts":["약 30만 km/s","약 3만 km/s","약 3억 km/s"],"ans":"약 30만 km/s","exp":"빛의 속도는 진공에서 약 299,792 km/s ≈ 30만 km/s입니다."},
+   {"q":"바나나는 나무에서 자란다?","opts":["맞다","틀리다, 풀이다","틀리다, 덩굴이다"],"ans":"틀리다, 풀이다","exp":"바나나는 나무가 아니라 세계 최대의 '풀'입니다! 줄기처럼 보이는 건 잎이 말린 거예요."},
+   {"q":"꿀은 절대 상하지 않는다?","opts":["맞다","틀리다","1년만 보관 가능"],"ans":"맞다","exp":"꿀은 수분이 적고 산성이라 세균이 살 수 없어요. 3000년 전 이집트 꿀도 먹을 수 있었답니다!"},
+   {"q":"세계에서 가장 매운 고추는?","opts":["하바네로","캐롤라이나 리퍼","청양고추"],"ans":"캐롤라이나 리퍼","exp":"캐롤라이나 리퍼는 220만 스코빌! 청양고추(1만)의 200배 이상입니다."},
+   {"q":"토마토는 과일일까 채소일까?","opts":["과일","채소","둘 다"],"ans":"둘 다","exp":"식물학적으로는 과일(열매), 요리·법적으로는 채소로 분류됩니다. 미국 대법원이 1893년 채소로 판결했어요!"}],
+
+  # 2층 — 과학/우주/기술
+  [{"q":"빛의 속도에 가장 가까운 것은?","opts":["약 30만 km/s","약 3만 km/s","약 3억 km/s"],"ans":"약 30만 km/s","exp":"빛의 속도는 진공에서 약 299,792 km/s ≈ 30만 km/s입니다."},
    {"q":"인체에서 가장 큰 기관(organ)은?","opts":["간","폐","피부"],"ans":"피부","exp":"피부는 약 1.5~2㎡로 인체에서 가장 큰 단일 기관입니다!"},
-   {"q":"뇌의 10% 설은?","opts":["사실이다","근거 없는 미신","50%만 맞다"],"ans":"근거 없는 미신","exp":"뇌의 10%만 사용한다는 건 완전한 미신! 뇌 전체가 활발히 사용됩니다."}],
+   {"q":"태양에서 지구까지 빛이 도달하는 시간은?","opts":["약 8분","약 1시간","약 1초"],"ans":"약 8분","exp":"정확히는 약 8분 20초! 태양-지구 거리 약 1.5억 km를 빛의 속도로 나눈 값이에요."},
+   {"q":"다이아몬드와 연필심(흑연)의 공통점은?","opts":["같은 원소(탄소)","같은 경도","같은 색"],"ans":"같은 원소(탄소)","exp":"둘 다 순수한 탄소! 원자 배열만 다릅니다. 다이아몬드는 정사면체, 흑연은 층상 구조예요."},
+   {"q":"물이 얼면 부피가?","opts":["늘어난다","줄어든다","변하지 않는다"],"ans":"늘어난다","exp":"물은 얼면 부피가 약 9% 커집니다. 그래서 얼음이 물에 뜨는 거예요!"},
+   {"q":"번개와 천둥 중 실제로 먼저 발생하는 것은?","opts":["동시에 발생","번개가 먼저","천둥이 먼저"],"ans":"동시에 발생","exp":"동시에 발생하지만 빛이 소리보다 빨라서 번개가 먼저 보이는 것입니다!"}],
+
+  # 3층 — 지리/역사/문화
   [{"q":"대한민국 천연기념물 제1호는?","opts":["진도 진돗개","대구 도동 측백나무 숲","울릉 향나무"],"ans":"대구 도동 측백나무 숲","exp":"1962년 지정된 대구 동구 도동 측백나무 숲이 천연기념물 1호입니다."},
-   {"q":"태양계에서 위성(달) 수가 가장 많은 행성은?","opts":["목성","토성","천왕성"],"ans":"토성","exp":"2023년 기준 토성은 146개 이상의 위성을 보유해 태양계 최다입니다!"},
-   {"q":"모국어 사용자 수 1위 언어는?","opts":["영어","스페인어","만다린(중국어)"],"ans":"만다린(중국어)","exp":"모국어 기준 만다린 약 9억 명 이상으로 1위! 영어는 총 사용자 기준 1위예요."},
-   {"q":"올림픽 오륜기의 색깔은 몇 가지?","opts":["4가지","5가지","6가지"],"ans":"5가지","exp":"파랑, 노랑, 검정, 초록, 빨강 5색! 흰 바탕 포함하면 모든 국가 국기 색을 포함합니다."}],
-  [{"q":"귀가 완전히 먼 후 베토벤이 작곡한 교향곡은?","opts":["운명(5번)","전원(6번)","합창(9번)"],"ans":"합창(9번)","exp":"완전히 청력을 잃은 채로 합창 교향곡을 완성했습니다. 경이로운 일이죠!"},
-   {"q":"셰익스피어 4대 비극이 아닌 것은?","opts":["햄릿","로미오와 줄리엣","맥베스"],"ans":"로미오와 줄리엣","exp":"4대 비극은 햄릿·오셀로·맥베스·리어왕! 로미오와 줄리엣은 포함되지 않습니다."},
-   {"q":"피카소 '게르니카'가 비판한 것은?","opts":["1차 세계대전","스페인 내전 중 폭격","프랑스 혁명"],"ans":"스페인 내전 중 폭격","exp":"게르니카는 1937년 스페인 내전 당시 나치 독일의 폭격에 항의한 작품입니다."},
-   {"q":"최초로 노벨상을 두 번 받은 사람은?","opts":["아인슈타인","마리 퀴리","라이너스 폴링"],"ans":"마리 퀴리","exp":"마리 퀴리는 물리학상(1903)과 화학상(1911)을 수상한 최초의 2회 수상자입니다!"}],
+   {"q":"세계에서 가장 큰 사막은?","opts":["사하라 사막","남극 대륙","고비 사막"],"ans":"남극 대륙","exp":"사막은 '강수량이 적은 지역'! 남극은 연 강수량 50mm 미만으로 세계 최대 사막이에요."},
+   {"q":"올림픽 오륜기의 색깔은 몇 가지?","opts":["4가지","5가지","6가지"],"ans":"5가지","exp":"파랑, 노랑, 검정, 초록, 빨강 5색! 흰 바탕 포함하면 모든 국가 국기 색을 포함합니다."},
+   {"q":"피라미드를 만든 사람들은?","opts":["노예","일반 노동자","외계인"],"ans":"일반 노동자","exp":"최근 연구에 따르면 피라미드는 노예가 아닌 급여를 받는 노동자들이 건설했습니다!"},
+   {"q":"세계에서 가장 긴 강은?","opts":["아마존 강","나일 강","양쯔 강"],"ans":"나일 강","exp":"나일 강은 약 6,650km로 세계 최장! 아마존은 유량 1위, 나일은 길이 1위입니다."},
+   {"q":"한글을 만든 왕은?","opts":["세종대왕","태종","정조"],"ans":"세종대왕","exp":"1443년 세종대왕이 훈민정음을 창제했습니다. 세계적으로도 인정받는 과학적 문자 체계!"}],
+
+  # 4층 — 예술/음악/문학
+  [{"q":"셰익스피어 4대 비극이 아닌 것은?","opts":["햄릿","로미오와 줄리엣","맥베스"],"ans":"로미오와 줄리엣","exp":"4대 비극은 햄릿·오셀로·맥베스·리어왕! 로미오와 줄리엣은 포함되지 않습니다."},
+   {"q":"최초로 노벨상을 두 번 받은 사람은?","opts":["아인슈타인","마리 퀴리","라이너스 폴링"],"ans":"마리 퀴리","exp":"마리 퀴리는 물리학상(1903)과 화학상(1911)을 수상한 최초의 2회 수상자입니다!"},
+   {"q":"'별이 빛나는 밤'을 그린 화가는?","opts":["피카소","고흐","모네"],"ans":"고흐","exp":"빈센트 반 고흐가 1889년 생레미 정신병원에서 그린 작품입니다."},
+   {"q":"'해리포터' 시리즈의 작가는?","opts":["J.K. 롤링","J.R.R. 톨킨","C.S. 루이스"],"ans":"J.K. 롤링","exp":"J.K. 롤링이 1997년부터 2007년까지 7편을 출간했습니다. 전 세계 5억 부 이상 판매!"},
+   {"q":"피아노의 흰 건반과 검은 건반은 총 몇 개?","opts":["76개","88개","100개"],"ans":"88개","exp":"표준 피아노는 흰 건반 52개 + 검은 건반 36개 = 총 88개입니다!"},
+   {"q":"모나리자가 전시된 미술관은?","opts":["대영박물관","루브르 박물관","메트로폴리탄"],"ans":"루브르 박물관","exp":"프랑스 파리의 루브르 박물관에 전시되어 있습니다. 매년 600만 명이 관람해요!"}],
+
+  # 5층 — 최종 보스: 어려운 상식
   [{"q":"실제로 존재하지 않는 화학 원소는?","opts":["아인슈타이늄(Es)","닥터륨(Dc)","오가네손(Og)"],"ans":"닥터륨(Dc)","exp":"아인슈타이늄(99번)과 오가네손(118번)은 실존 원소! 닥터륨은 허구입니다."},
-   {"q":"블랙홀에서 빠져나올 수 있는 것은?","opts":["빛","중력파","아무것도 없다"],"ans":"중력파","exp":"블랙홀에서 빛조차 탈출 불가! 그러나 중력파는 시공간 파동이라 방출됩니다."},
    {"q":"인간의 DNA와 가장 가까운 동물은?","opts":["침팬지","돌고래","문어"],"ans":"침팬지","exp":"침팬지는 인간과 약 98.7%의 DNA를 공유합니다. 가장 가까운 친척이죠!"},
-   {"q":"슈뢰딩거의 고양이 실험이 설명하는 것은?","opts":["고양이의 수명","양자 중첩의 역설","상대성 이론"],"ans":"양자 중첩의 역설","exp":"관찰 전까지 살아있고 죽어있는 두 상태가 중첩된다는 양자역학의 역설입니다!"}],
+   {"q":"지구에서 가장 깊은 곳은?","opts":["마리아나 해구","에베레스트 반대편","북극 해저"],"ans":"마리아나 해구","exp":"마리아나 해구의 챌린저 해연은 약 11,034m! 에베레스트를 넣어도 2km 남습니다."},
+   {"q":"인간의 뼈는 총 몇 개?","opts":["106개","206개","306개"],"ans":"206개","exp":"성인 기준 206개! 아기는 약 270개로 태어나지만 성장하며 뼈가 합쳐집니다."},
+   {"q":"1광년은 어떤 단위?","opts":["시간","거리","질량"],"ans":"거리","exp":"1광년은 빛이 1년간 가는 거리, 약 9.46조 km입니다. 시간 단위가 아니에요!"},
+   {"q":"옥수수 한 줄의 알갱이 수는 항상?","opts":["짝수","홀수","상관없다"],"ans":"짝수","exp":"옥수수 알갱이는 항상 짝수 줄! 씨앗이 쌍으로 발달하는 식물 구조 때문입니다."}],
 ]
 
 HITS_NEEDED = 3
@@ -98,9 +267,8 @@ st.markdown("""
 .stApp{background:#0d0d1a;}
 .pix{font-family:'Press Start 2P',cursive;}
 
-/* 배틀 필드 */
 .battle{
-  border:5px solid #ffd700;padding:20px 16px;
+  border:5px solid #ffd700;padding:24px 20px;
   display:flex;justify-content:space-between;align-items:flex-end;
   min-height:300px;position:relative;
   box-shadow:0 0 50px rgba(255,215,0,.2);
@@ -108,20 +276,12 @@ st.markdown("""
   background-color:#0a0a15;
   background-size:cover;background-position:center;}
 .battle::before{content:'';position:absolute;inset:0;
-  background:linear-gradient(0deg,rgba(0,0,0,.6) 0%,rgba(0,0,0,.1) 40%,rgba(0,0,0,.2) 100%);
+  background:linear-gradient(0deg,rgba(0,0,0,.5) 0%,rgba(0,0,0,.05) 40%,rgba(0,0,0,.15) 100%);
   pointer-events:none;z-index:0;}
 .battle::after{content:'';position:absolute;inset:0;pointer-events:none;
-  background:repeating-linear-gradient(transparent,transparent 3px,rgba(0,0,0,.04) 4px);border-radius:10px;z-index:0;}
+  background:repeating-linear-gradient(transparent,transparent 3px,rgba(0,0,0,.04) 4px);
+  border-radius:10px;z-index:0;}
 
-/* 캐릭터 이미지 - mix-blend-mode로 어두운 배경 제거 */
-.char-img{width:150px;height:150px;object-fit:contain;image-rendering:pixelated;
-  mix-blend-mode:screen;
-  filter:drop-shadow(0 0 8px rgba(100,180,255,.4)) contrast(1.1) brightness(1.05);}
-.mon-img{width:170px;height:170px;object-fit:contain;image-rendering:pixelated;
-  mix-blend-mode:screen;
-  filter:drop-shadow(0 0 10px rgba(255,50,50,.4)) contrast(1.1) brightness(1.05);}
-
-/* HUD */
 .hud{display:flex;justify-content:space-between;align-items:center;margin:8px 0;}
 .hudlbl{font-family:'Press Start 2P',cursive;font-size:11px;color:#ccc;}
 .qcard{background:rgba(0,0,0,.75);border:3px solid #5c6bc0;border-radius:10px;
@@ -137,19 +297,14 @@ st.markdown("""
 .combo-box{background:linear-gradient(135deg,rgba(255,165,0,.25),rgba(255,215,0,.15));
   border:2px solid #ffa500;border-radius:8px;padding:12px;text-align:center;margin:6px 0;
   animation:comboPulse .6s ease-in-out;}
-
-/* HUD 바 */
 .hud-bar{display:flex;justify-content:space-between;align-items:center;margin:8px 0;gap:8px;}
-.hud-item{flex:1;text-align:center;padding:10px 6px;border-radius:10px;font-family:'Noto Sans KR',sans-serif;
-  font-size:15px;font-weight:700;}
+.hud-item{flex:1;text-align:center;padding:10px 6px;border-radius:10px;font-family:'Noto Sans KR',sans-serif;font-size:15px;font-weight:700;}
 .hud-coin{background:rgba(255,193,7,.2);border:2px solid #ffc107;color:#ffd740;}
 .hud-combo{background:rgba(255,152,0,.2);border:2px solid #ff9800;color:#ffab40;}
 .hud-potion{background:rgba(76,175,80,.2);border:2px solid #4CAF50;color:#69f0ae;}
 .hud-shield{background:rgba(33,150,243,.2);border:2px solid #42a5f5;color:#64b5f6;}
-
 .reward-box{background:linear-gradient(135deg,rgba(156,39,176,.25),rgba(103,58,183,.25));
-  border:2px solid #ab47bc;border-radius:12px;padding:16px;text-align:center;margin:10px 0;
-  animation:rewardPop .5s ease;}
+  border:2px solid #ab47bc;border-radius:12px;padding:16px;text-align:center;margin:10px 0;animation:rewardPop .5s ease;}
 .effect-tag{display:inline-block;background:rgba(255,215,0,.12);border:1px solid #ffd740;border-radius:6px;
   padding:4px 10px;margin:2px 4px;font-size:12px;color:#ffd740;font-family:'Noto Sans KR',sans-serif;}
 .encourage{background:rgba(33,150,243,.12);border:1px solid #42a5f5;border-radius:8px;
@@ -165,211 +320,165 @@ st.markdown("""
   font-family:'Press Start 2P',cursive;text-shadow:1px 1px 2px rgba(0,0,0,.5);}
 .shop-card{background:rgba(255,255,255,.06);border:2px solid #7c4dff;border-radius:12px;
   padding:14px;text-align:center;transition:all .2s;}
-.shop-card:hover{background:rgba(124,77,255,.15);border-color:#b388ff;}
 .stButton>button{width:100%;border-radius:8px;border:3px solid #5c6bc0;background:#0d0d2a;
   color:#fff;font-family:'Noto Sans KR',sans-serif;font-weight:700;font-size:18px;
   box-shadow:3px 3px 0 #5c6bc0;transition:all .15s;padding:14px 10px;}
 .stButton>button:hover{background:#5c6bc0;box-shadow:none;transform:translate(3px,3px);}
 
-/* 애니메이션 */
 @keyframes heroIdle{0%,100%{transform:translateY(0);}50%{transform:translateY(-8px);}}
-@keyframes heroAtk{0%{transform:translateX(0) scale(1);}30%{transform:translateX(50px) scale(1.1);}60%{transform:translateX(30px) scale(1);}100%{transform:translateX(0) scale(1);}}
-@keyframes heroHit{0%{transform:translateX(0);filter:none;}20%{transform:translateX(-30px);filter:brightness(2) hue-rotate(180deg);}50%{transform:translateX(-15px);filter:brightness(1.5);}100%{transform:translateX(0);filter:none;}}
-@keyframes monIdle{0%,100%{transform:translateY(0) scale(1);}50%{transform:translateY(-6px) scale(1.02);}}
-@keyframes monHit{0%{transform:translateX(0);filter:none;}20%{transform:translateX(30px);filter:brightness(3) saturate(0);}50%{transform:translateX(15px);filter:brightness(1.5) saturate(.5);}100%{transform:translateX(0);filter:none;}}
-@keyframes monAtk{0%{transform:translateX(0) scale(1);}30%{transform:translateX(-40px) scale(1.15);}60%{transform:translateX(-20px) scale(1.05);}100%{transform:translateX(0) scale(1);}}
-@keyframes monDie{0%{opacity:1;transform:scale(1) rotate(0);}50%{opacity:.5;transform:scale(.7) rotate(5deg);}100%{opacity:0;transform:scale(.2) rotate(10deg) translateY(40px);}}
+@keyframes heroAtk{0%{transform:translateX(0);}40%{transform:translateX(40px) scale(1.1);}100%{transform:translateX(0);}}
+@keyframes heroHit{0%{transform:translateX(0);filter:none;}30%{transform:translateX(-25px);filter:brightness(2.5) hue-rotate(180deg);}100%{transform:translateX(0);filter:none;}}
+@keyframes monIdle{0%,100%{transform:translateY(0);}50%{transform:translateY(-6px);}}
+@keyframes monHit{0%{transform:translateX(0);filter:none;}30%{transform:translateX(25px);filter:brightness(3) saturate(0);}100%{transform:translateX(0);filter:none;}}
+@keyframes monAtk{0%{transform:translateX(0);}40%{transform:translateX(-35px) scale(1.1);}100%{transform:translateX(0);}}
+@keyframes monDie{0%{opacity:1;transform:scale(1);}50%{opacity:.4;transform:scale(.6);}100%{opacity:0;transform:scale(.2) translateY(40px);}}
 @keyframes pulse{0%,100%{text-shadow:0 0 10px #ffd700;}50%{text-shadow:0 0 30px #ffd700,0 0 60px #ff9800;}}
 @keyframes comboPulse{0%{transform:scale(1);}50%{transform:scale(1.05);}100%{transform:scale(1);}}
-@keyframes rewardPop{0%{transform:scale(0) rotate(-10deg);opacity:0;}100%{transform:scale(1) rotate(0);opacity:1;}}
-
-.hero-idle{animation:heroIdle 2s ease-in-out infinite;}
-.hero-atk{animation:heroAtk .6s ease forwards;}
-.hero-hit{animation:heroHit .6s ease forwards;}
-.mon-idle{animation:monIdle 2.5s ease-in-out infinite;}
-.mon-hit{animation:monHit .6s ease forwards;}
-.mon-atk{animation:monAtk .6s ease forwards;}
-.mon-die{animation:monDie .8s ease forwards;}
+@keyframes rewardPop{0%{transform:scale(0);opacity:0;}100%{transform:scale(1);opacity:1;}}
+.hero-idle{display:inline-block;animation:heroIdle 2s ease-in-out infinite;}
+.hero-atk{display:inline-block;animation:heroAtk .6s ease forwards;}
+.hero-hit{display:inline-block;animation:heroHit .6s ease forwards;}
+.mon-idle{display:inline-block;animation:monIdle 2.5s ease-in-out infinite;}
+.mon-hit{display:inline-block;animation:monHit .6s ease forwards;}
+.mon-atk{display:inline-block;animation:monAtk .6s ease forwards;}
+.mon-die{display:inline-block;animation:monDie .8s ease forwards;}
 .pulse{animation:pulse 1.5s ease-in-out infinite;}
 </style>
 """, unsafe_allow_html=True)
 
 screen = st.session_state.screen
 
-# ════════════════════════════════════════════════════════════
-# 🎬 TITLE SCREEN
-# ════════════════════════════════════════════════════════════
+# ═══════════════ TITLE ═══════════════
 if screen == "title":
     if OPENING_B64:
         st.markdown(f'<img src="{OPENING_B64}" style="width:100%;border:4px solid #ffd700;border-radius:10px;box-shadow:0 0 40px rgba(255,215,0,.4);margin-bottom:8px">', unsafe_allow_html=True)
-    st.markdown("""
-    <div style="text-align:center;padding:16px 0 8px">
+    st.markdown("""<div style="text-align:center;padding:16px 0 8px">
       <p class="pix pulse" style="color:#ffd700;font-size:22px;margin:0">⚔ 마왕의 성 ⚔</p>
       <p class="pix" style="color:#b39ddb;font-size:13px;margin-top:14px">QUIZ DUNGEON</p>
     </div>""", unsafe_allow_html=True)
-    col1, col2, col3 = st.columns([1,2,1])
-    with col2:
-        name = st.text_input("🦸 용사님의 이름을 입력하세요!", value="", max_chars=10, placeholder="이름을 입력해주세요")
-    st.markdown("""
-    <div style="text-align:center;padding:4px 0 8px">
+    col1,col2,col3=st.columns([1,2,1])
+    with col2: name = st.text_input("🦸 용사님의 이름을 입력하세요!", value="", max_chars=10, placeholder="이름을 입력해주세요")
+    st.markdown("""<div style="text-align:center;padding:4px 0 8px">
       <p style="color:#ccc;font-family:'Noto Sans KR',sans-serif;font-size:15px;line-height:1.8">
          퀴즈를 풀어 몬스터를 물리치고 마왕의 성을 정복하라!<br>
-         <b style="color:#ff8a80">3번 정답</b>을 맞추면 몬스터를 격파!<br>
-         오답 시 <b style="color:#ff8a80">❤️ 한 개</b> 감소. HP 5개로 도전!<br><br>
-         🧪 <b style="color:#69f0ae">힌트 포션</b> · ⚡ <b style="color:#ffab40">콤보</b> · 🛒 <b style="color:#b388ff">상점</b> · 🎁 <b style="color:#f48fb1">아이템</b>
-      </p>
-    </div>""", unsafe_allow_html=True)
-    col1, col2, col3 = st.columns([1,2,1])
+         <b style="color:#ff8a80">3번 정답</b>으로 몬스터 격파 · 오답 시 <b style="color:#ff8a80">❤️</b> 감소<br>
+         🧪 <b style="color:#69f0ae">힌트</b> · ⚡ <b style="color:#ffab40">콤보</b> · 🛒 <b style="color:#b388ff">상점</b> · 🎁 <b style="color:#f48fb1">아이템</b>
+      </p></div>""", unsafe_allow_html=True)
+    col1,col2,col3=st.columns([1,2,1])
     with col2:
         if st.button("🗡️  게임 시작!", use_container_width=True, type="primary"):
             st.session_state.hero_name = name.strip() if name.strip() else "용사"
-            st.session_state.screen = "game"
-            st.rerun()
-    st.stop()
-
-# ════════════════════════════════════════════════════════════
-# 🛒 SHOP SCREEN
-# ════════════════════════════════════════════════════════════
-if screen == "shop":
-    mi = st.session_state.mon_idx
-    coins = st.session_state.coins
-    floor_names = ["1층 슬라임 동굴","2층 고블린 땅굴","3층 오크 요새","4층 언데드 묘지","5층 마왕의 옥좌 👑"]
-    st.markdown(f"""
-    <div style="text-align:center;padding:16px 0">
-      <p class="pix" style="color:#b388ff;font-size:18px">🛒 마법 상점 🛒</p>
-      <p style="color:#ccc;font-family:'Noto Sans KR',sans-serif;font-size:16px;margin-top:8px">다음 전투 전에 아이템을 구매하세요!</p>
-      <p style="color:#ffd740;font-family:'Noto Sans KR',sans-serif;font-size:20px;font-weight:700;margin-top:6px">💰 보유 코인: {coins}</p>
-    </div>""", unsafe_allow_html=True)
-    c1, c2, c3 = st.columns(3)
-    with c1:
-        st.markdown(f"""<div class="shop-card"><div style="font-size:36px">🧪</div>
-          <p style="color:#69f0ae;font-family:'Noto Sans KR',sans-serif;font-size:16px;font-weight:700;margin:6px 0">힌트 포션</p>
-          <p style="color:#aaa;font-size:13px;font-family:'Noto Sans KR',sans-serif">오답 하나 제거</p>
-          <p style="color:#ffd740;font-size:15px;font-weight:700">💰 30 코인</p>
-          <p style="color:#888;font-size:12px">현재 {st.session_state.hints_left}개</p></div>""", unsafe_allow_html=True)
-        if st.button("🧪 구매" if coins>=30 else "🚫 부족", key="buy_hint", disabled=coins<30):
-            st.session_state.coins -= 30; st.session_state.hints_left += 1; st.rerun()
-    with c2:
-        can2 = coins>=50 and st.session_state.player_hp<MAX_HP
-        st.markdown(f"""<div class="shop-card"><div style="font-size:36px">❤️</div>
-          <p style="color:#ff8a80;font-family:'Noto Sans KR',sans-serif;font-size:16px;font-weight:700;margin:6px 0">HP 회복약</p>
-          <p style="color:#aaa;font-size:13px;font-family:'Noto Sans KR',sans-serif">HP 1칸 회복</p>
-          <p style="color:#ffd740;font-size:15px;font-weight:700">💰 50 코인</p>
-          <p style="color:#888;font-size:12px">{"❤️"*st.session_state.player_hp}{"🖤"*(MAX_HP-st.session_state.player_hp)}</p></div>""", unsafe_allow_html=True)
-        l2 = "❤️ 구매" if can2 else ("💚 HP 가득" if st.session_state.player_hp>=MAX_HP else "🚫 부족")
-        if st.button(l2, key="buy_hp", disabled=not can2):
-            st.session_state.coins -= 50; st.session_state.player_hp = min(MAX_HP, st.session_state.player_hp+1); st.rerun()
-    with c3:
-        has_s = st.session_state.shield_active; can3 = coins>=40 and not has_s
-        st.markdown(f"""<div class="shop-card"><div style="font-size:36px">🛡️</div>
-          <p style="color:#64b5f6;font-family:'Noto Sans KR',sans-serif;font-size:16px;font-weight:700;margin:6px 0">보호막</p>
-          <p style="color:#aaa;font-size:13px;font-family:'Noto Sans KR',sans-serif">오답 1회 무효</p>
-          <p style="color:#ffd740;font-size:15px;font-weight:700">💰 40 코인</p>
-          <p style="color:#888;font-size:12px">{"✅ 장착 중" if has_s else "❌ 미장착"}</p></div>""", unsafe_allow_html=True)
-        if st.button("🛡️ 구매" if can3 else ("✅ 있음" if has_s else "🚫 부족"), key="buy_shield", disabled=not can3):
-            st.session_state.coins -= 40; st.session_state.shield_active = True; st.rerun()
-    st.markdown("<br>", unsafe_allow_html=True)
-    col1, col2, col3 = st.columns([1,2,1])
-    with col2:
-        nf = floor_names[mi] if mi<len(floor_names) else "최종 결전"
-        if st.button(f"⚔️ {nf}으로 출발!", type="primary", use_container_width=True):
             st.session_state.screen = "game"; st.rerun()
     st.stop()
 
-# ════════════════════════════════════════════════════════════
-# 💀 GAME OVER
-# ════════════════════════════════════════════════════════════
-mi  = st.session_state.mon_idx
-php = st.session_state.player_hp
-hero_name = st.session_state.hero_name
+# ═══════════════ SHOP ═══════════════
+if screen == "shop":
+    mi=st.session_state.mon_idx; coins=st.session_state.coins
+    floor_names=["1층 슬라임 동굴","2층 고블린 땅굴","3층 오크 요새","4층 언데드 묘지","5층 마왕의 옥좌 👑"]
+    st.markdown(f"""<div style="text-align:center;padding:16px 0">
+      <p class="pix" style="color:#b388ff;font-size:18px">🛒 마법 상점 🛒</p>
+      <p style="color:#ffd740;font-family:'Noto Sans KR',sans-serif;font-size:20px;font-weight:700;margin-top:6px">💰 {coins} 코인</p>
+    </div>""", unsafe_allow_html=True)
+    c1,c2,c3=st.columns(3)
+    with c1:
+        st.markdown(f"""<div class="shop-card"><div style="font-size:36px">🧪</div>
+          <p style="color:#69f0ae;font-family:'Noto Sans KR',sans-serif;font-size:16px;font-weight:700">힌트 포션</p>
+          <p style="color:#aaa;font-size:13px">오답 하나 제거</p>
+          <p style="color:#ffd740;font-size:15px;font-weight:700">💰 30</p></div>""", unsafe_allow_html=True)
+        if st.button("🧪 구매" if coins>=30 else "🚫 부족", key="bh", disabled=coins<30):
+            st.session_state.coins-=30; st.session_state.hints_left+=1; st.rerun()
+    with c2:
+        can2=coins>=50 and st.session_state.player_hp<MAX_HP
+        st.markdown(f"""<div class="shop-card"><div style="font-size:36px">❤️</div>
+          <p style="color:#ff8a80;font-family:'Noto Sans KR',sans-serif;font-size:16px;font-weight:700">HP 회복약</p>
+          <p style="color:#aaa;font-size:13px">HP 1칸 회복</p>
+          <p style="color:#ffd740;font-size:15px;font-weight:700">💰 50</p></div>""", unsafe_allow_html=True)
+        if st.button("❤️ 구매" if can2 else ("💚 가득" if st.session_state.player_hp>=MAX_HP else "🚫 부족"), key="bhp", disabled=not can2):
+            st.session_state.coins-=50; st.session_state.player_hp=min(MAX_HP,st.session_state.player_hp+1); st.rerun()
+    with c3:
+        hs=st.session_state.shield_active; can3=coins>=40 and not hs
+        st.markdown(f"""<div class="shop-card"><div style="font-size:36px">🛡️</div>
+          <p style="color:#64b5f6;font-family:'Noto Sans KR',sans-serif;font-size:16px;font-weight:700">보호막</p>
+          <p style="color:#aaa;font-size:13px">오답 1회 무효</p>
+          <p style="color:#ffd740;font-size:15px;font-weight:700">💰 40</p></div>""", unsafe_allow_html=True)
+        if st.button("🛡️ 구매" if can3 else ("✅ 있음" if hs else "🚫 부족"), key="bs", disabled=not can3):
+            st.session_state.coins-=40; st.session_state.shield_active=True; st.rerun()
+    st.markdown("<br>", unsafe_allow_html=True)
+    col1,col2,col3=st.columns([1,2,1])
+    with col2:
+        nf=floor_names[mi] if mi<len(floor_names) else "최종"
+        if st.button(f"⚔️ {nf}으로!", type="primary", use_container_width=True):
+            st.session_state.screen="game"; st.rerun()
+    st.stop()
 
-if php <= 0:
+# ═══════════════ GAME OVER ═══════════════
+mi=st.session_state.mon_idx; php=st.session_state.player_hp; hero_name=st.session_state.hero_name
+if php<=0:
     if GAMEOVER_B64:
         st.markdown(f'<img src="{GAMEOVER_B64}" style="width:100%;border:4px solid #f44336;border-radius:10px;box-shadow:0 0 40px rgba(244,67,54,.4);margin-bottom:10px">', unsafe_allow_html=True)
     st.markdown(f"""<div style="text-align:center;padding:20px">
       <p class="pix" style="color:#f44336;font-size:26px;text-shadow:0 0 20px #f44336">💀 GAME OVER 💀</p>
       <p style="color:#ccc;font-family:'Noto Sans KR',sans-serif;font-size:18px;margin-top:8px">{hero_name}(이)가 {mi+1}층에서 쓰러졌습니다...</p>
       <p style="color:#ffd700;font-family:'Noto Sans KR',sans-serif;font-size:15px;margin-top:12px">
-        📊 정답 {st.session_state.total_correct} · 오답 {st.session_state.total_wrong} · 💰 {st.session_state.coins} · ⚡ 최대콤보 {st.session_state.max_combo}</p>
+        📊 정답 {st.session_state.total_correct} · 오답 {st.session_state.total_wrong} · 💰 {st.session_state.coins} · ⚡최대콤보 {st.session_state.max_combo}</p>
     </div>""", unsafe_allow_html=True)
     col1,col2,col3=st.columns([1,2,1])
     with col2:
-        if st.button("🔄 처음부터 다시!", use_container_width=True): init(); st.rerun()
+        if st.button("🔄 처음부터!", use_container_width=True): init(); st.rerun()
     st.stop()
 
-# ════════════════════════════════════════════════════════════
-# 🏆 CLEAR SCREEN
-# ════════════════════════════════════════════════════════════
-if mi >= len(MONSTERS):
+# ═══════════════ CLEAR ═══════════════
+if mi>=len(MONSTERS):
     st.balloons()
     if ENDING_B64:
         st.markdown(f'<img src="{ENDING_B64}" style="width:100%;border:4px solid #ffd700;border-radius:10px;box-shadow:0 0 40px rgba(255,215,0,.4);margin-bottom:8px">', unsafe_allow_html=True)
-    rank = "S" if php==MAX_HP else ("A" if php>=4 else ("B" if php>=3 else ("C" if php>=2 else "D")))
-    rank_color = {"S":"#FFD700","A":"#C0C0C0","B":"#CD7F32","C":"#78909C","D":"#f44336"}[rank]
-    rank_title = {"S":"전설의 용사","A":"위대한 모험가","B":"숙련된 전사","C":"초보 영웅","D":"수습 용사"}[rank]
-    tc,tw = st.session_state.total_correct, st.session_state.total_wrong
-    coins = st.session_state.coins * (2 if "coin_double" in st.session_state.collected_effects else 1)
-    mc = st.session_state.max_combo
+    rank="S" if php==MAX_HP else ("A" if php>=4 else ("B" if php>=3 else ("C" if php>=2 else "D")))
+    rc={"S":"#FFD700","A":"#C0C0C0","B":"#CD7F32","C":"#78909C","D":"#f44336"}[rank]
+    rt={"S":"전설의 용사","A":"위대한 모험가","B":"숙련된 전사","C":"초보 영웅","D":"수습 용사"}[rank]
+    tc,tw=st.session_state.total_correct,st.session_state.total_wrong
+    coins=st.session_state.coins*(2 if "coin_double" in st.session_state.collected_effects else 1)
     st.markdown(f"""<div style="text-align:center;padding:16px 0">
       <p class="pix pulse" style="color:#ffd700;font-size:22px">👑 DUNGEON CLEAR! 👑</p>
-      <p style="color:#e0e0e0;font-family:'Noto Sans KR',sans-serif;font-size:20px;margin-top:12px"><b>{hero_name}</b>(이)가 마왕을 물리치고 성을 탈환했습니다!</p>
-      <p class="pix" style="color:{rank_color};font-size:32px;margin:12px 0">RANK: {rank}</p>
-      <p style="color:#b39ddb;font-family:'Noto Sans KR',sans-serif;font-size:16px">🏅 {rank_title}</p>
-      <p style="color:#f48fb1;font-family:'Noto Sans KR',sans-serif;font-size:18px">HP: {"❤️"*php}{"🖤"*(MAX_HP-php)}</p>
+      <p style="color:#e0e0e0;font-family:'Noto Sans KR',sans-serif;font-size:20px;margin-top:12px"><b>{hero_name}</b>(이)가 마왕을 쓰러뜨렸습니다!</p>
+      <p class="pix" style="color:{rc};font-size:32px;margin:12px 0">RANK: {rank}</p>
+      <p style="color:#b39ddb;font-family:'Noto Sans KR',sans-serif;font-size:16px">🏅 {rt} · HP {"❤️"*php}{"🖤"*(MAX_HP-php)}</p>
+      <p style="color:#ffd740;font-family:'Noto Sans KR',sans-serif;font-size:16px;margin-top:8px">
+        ✅{tc} · ❌{tw} · 💰{coins} · ⚡{st.session_state.max_combo}콤보</p>
     </div>""", unsafe_allow_html=True)
-    coin_label = f"💰{coins}(2배!)" if "coin_double" in st.session_state.collected_effects else f"💰{coins}"
-    st.markdown(f"""<div style="background:rgba(255,255,255,.05);border:2px solid #5c6bc0;border-radius:10px;padding:16px;margin:8px 0">
-      <p class="pix" style="color:#81d4fa;font-size:11px;text-align:center;margin-bottom:12px">📊 모험 기록</p>
-      <div style="display:flex;justify-content:space-around;flex-wrap:wrap;gap:8px;text-align:center">
-        <div style="padding:8px 14px"><span style="color:#4CAF50;font-size:20px;font-weight:bold">✅{tc}</span><br><span style="color:#aaa;font-size:12px">정답</span></div>
-        <div style="padding:8px 14px"><span style="color:#f44336;font-size:20px;font-weight:bold">❌{tw}</span><br><span style="color:#aaa;font-size:12px">오답</span></div>
-        <div style="padding:8px 14px"><span style="color:#ffd700;font-size:20px;font-weight:bold">{coin_label}</span><br><span style="color:#aaa;font-size:12px">코인</span></div>
-        <div style="padding:8px 14px"><span style="color:#ff9800;font-size:20px;font-weight:bold">⚡{mc}</span><br><span style="color:#aaa;font-size:12px">최대콤보</span></div>
-      </div></div>""", unsafe_allow_html=True)
     if st.session_state.collected_items:
-        items_html = " ".join([f'<span class="item-badge">{it}</span>' for it in st.session_state.collected_items])
-        st.markdown(f'<p class="pix" style="color:#ab47bc;font-size:10px;text-align:center;margin-top:10px">🎒 수집 아이템</p>', unsafe_allow_html=True)
-        st.markdown(f'<div class="items-bar" style="justify-content:center">{items_html}</div>', unsafe_allow_html=True)
+        items_html=" ".join([f'<span class="item-badge">{it}</span>' for it in st.session_state.collected_items])
+        st.markdown(f'<div class="items-bar" style="justify-content:center">🎒 {items_html}</div>', unsafe_allow_html=True)
     col1,col2,col3=st.columns([1,2,1])
     with col2:
-        if st.button("🔄 다시 도전", use_container_width=True, type="primary"): init(); st.rerun()
+        if st.button("🔄 다시 도전",use_container_width=True,type="primary"): init(); st.rerun()
     st.stop()
 
-# ════════════════════════════════════════════════════════════
-# ⚔️ GAME SCREEN
-# ════════════════════════════════════════════════════════════
-hits  = st.session_state.mon_hits
-qi    = st.session_state.qpool_idx
-dying = st.session_state.mon_dying
-lc    = st.session_state.last_correct
-quiz  = st.session_state.shuffled_quiz
-combo = st.session_state.combo
-coins = st.session_state.coins
+# ═══════════════ GAME ═══════════════
+hits=st.session_state.mon_hits; qi=st.session_state.qpool_idx; dying=st.session_state.mon_dying
+lc=st.session_state.last_correct; quiz=st.session_state.shuffled_quiz; combo=st.session_state.combo; coins=st.session_state.coins
 
-mon_name, mon_b64, mon_ico = MONSTERS[mi]
-q_pool = quiz[mi]
-q = q_pool[qi % len(q_pool)]
+mon_name,mon_spr,mon_ico=MONSTERS[mi]
+q_pool=quiz[mi]; q=q_pool[qi%len(q_pool)]
+cur_hits_needed=2 if ("power_hit" in st.session_state.collected_effects and mi>2) else HITS_NEEDED
 
-cur_hits_needed = 2 if ("power_hit" in st.session_state.collected_effects and mi > 2) else HITS_NEEDED
+# 스프라이트 결정
+hero_spr=HERO_ATK if lc is True else (HERO_HIT if lc is False else HERO_IDLE)
+hero_anim="hero-atk" if lc is True else ("hero-hit" if lc is False else "hero-idle")
+mon_anim="mon-die" if dying else ("mon-hit" if lc is True else ("mon-atk" if lc is False else "mon-idle"))
 
-# 애니메이션 결정
-hero_anim = "hero-atk" if lc is True else ("hero-hit" if lc is False else "hero-idle")
-mon_anim  = "mon-die" if dying else ("mon-hit" if lc is True else ("mon-atk" if lc is False else "mon-idle"))
+hero_svg_str=svg(hero_spr,12)
+mon_svg_str=svg(mon_spr,13)
 
-mon_hp_pct  = int(hits/cur_hits_needed*100)
-mon_bar_col = "#f44336" if mon_hp_pct>=66 else ("#FF9800" if mon_hp_pct>=33 else "#4CAF50")
+mon_hp_pct=int(hits/cur_hits_needed*100)
+mon_bar_col="#f44336" if mon_hp_pct>=66 else ("#FF9800" if mon_hp_pct>=33 else "#4CAF50")
+floor_names=["1층 슬라임 동굴","2층 고블린 땅굴","3층 오크 요새","4층 언데드 묘지","5층 마왕의 옥좌 👑"]
 
-floor_names = ["1층 슬라임 동굴","2층 고블린 땅굴","3층 오크 요새","4층 언데드 묘지","5층 마왕의 옥좌 👑"]
-
-# 진행도
-overall_pct = int((mi*HITS_NEEDED+hits)/(len(MONSTERS)*HITS_NEEDED)*100)
+overall_pct=int((mi*HITS_NEEDED+hits)/(len(MONSTERS)*HITS_NEEDED)*100)
 st.markdown(f'<div class="progress-bar"><div class="progress-fill" style="width:{overall_pct}%">{overall_pct}%</div></div>', unsafe_allow_html=True)
-
 st.markdown(f'<p class="pix" style="color:#ffd700;font-size:14px;text-align:center;padding:6px 0;text-shadow:0 0 10px #ffd700">⚔ 마왕의 성 ⚔</p>', unsafe_allow_html=True)
 st.markdown(f'<p class="pix" style="color:#b39ddb;font-size:12px;text-align:center;margin-bottom:6px">{floor_names[mi]}</p>', unsafe_allow_html=True)
 
-# HUD
-shield_html = '<div class="hud-item hud-shield">🛡️ ON</div>' if st.session_state.shield_active else ""
+shield_html='<div class="hud-item hud-shield">🛡️ ON</div>' if st.session_state.shield_active else ""
 st.markdown(f"""<div class="hud-bar">
   <div class="hud-item hud-coin">💰 {coins}</div>
   <div class="hud-item hud-combo">⚡ {combo}콤보</div>
@@ -377,31 +486,26 @@ st.markdown(f"""<div class="hud-bar">
   {shield_html}
 </div>""", unsafe_allow_html=True)
 
-# 패시브 효과
 if st.session_state.collected_effects:
-    em = {"coin_bonus":"🗡️코인+5","shield":"🛡️무효","power_hit":"💪2타","hint_bonus":"👻포션+1","coin_double":"👑2배"}
-    eff_html = "".join([f'<span class="effect-tag">{em.get(e,e)}</span>' for e in st.session_state.collected_effects])
+    em={"coin_bonus":"🗡️코인+5","shield":"🛡️무효","power_hit":"💪2타","hint_bonus":"👻포션+1","coin_double":"👑2배"}
+    eff_html="".join([f'<span class="effect-tag">{em.get(e,e)}</span>' for e in st.session_state.collected_effects])
     st.markdown(f'<div style="text-align:center;margin:4px 0">{eff_html}</div>', unsafe_allow_html=True)
 
-# 🎮 배틀 필드 (이미지 기반!)
-hero_img_tag = f'<img src="{HERO_B64}" class="char-img">' if HERO_B64 else '<div style="font-size:60px">🦸</div>'
-mon_img_tag  = f'<img src="{mon_b64}" class="mon-img">' if mon_b64 else f'<div style="font-size:60px">{mon_ico}</div>'
-bg_style = f'background-image:url({BATTLE_BG_B64});' if BATTLE_BG_B64 else ''
-
+bg_style=f'background-image:url({BATTLE_BG_B64});' if BATTLE_BG_B64 else ''
 st.markdown(f"""
 <div class="battle" style="{bg_style}">
   <div style="text-align:center;z-index:1">
-    <div class="{hero_anim}">{hero_img_tag}</div>
+    <div class="{hero_anim}">{hero_svg_str}</div>
     <p class="pix" style="color:#81d4fa;font-size:11px;margin-top:8px">{hero_name}</p>
   </div>
   <div class="pix" style="color:#f44336;font-size:28px;align-self:center;text-shadow:0 0 16px #f44336;z-index:1">VS</div>
   <div style="text-align:center;z-index:1">
-    <div class="{mon_anim}">{mon_img_tag}</div>
+    <div class="{mon_anim}">{mon_svg_str}</div>
     <p class="pix" style="color:#ef9a9a;font-size:11px;margin-top:8px">{mon_ico} {mon_name}</p>
   </div>
 </div>""", unsafe_allow_html=True)
 
-dmg_bullets = "💥"*hits + "⬜"*(cur_hits_needed-hits)
+dmg_bullets="💥"*hits+"⬜"*(cur_hits_needed-hits)
 st.markdown(f"""<div class="hud">
   <span class="hudlbl">{hero_name} {"❤️"*php}{"🖤"*(MAX_HP-php)}</span>
   <span class="hudlbl" style="color:#ffd700">{mon_name} {dmg_bullets}</span>
@@ -411,22 +515,20 @@ st.markdown(f"""<div class="hud">
 </div>""", unsafe_allow_html=True)
 
 if st.session_state.collected_items:
-    items_html = " ".join([f'<span class="item-badge">{it}</span>' for it in st.session_state.collected_items])
+    items_html=" ".join([f'<span class="item-badge">{it}</span>' for it in st.session_state.collected_items])
     st.markdown(f'<div class="items-bar">🎒 {items_html}</div>', unsafe_allow_html=True)
 
-# 결과 표시
-if lc == "shielded":
+if lc=="shielded":
     st.markdown(f'<div class="res-shield">🛡️ 보호막이 데미지를 막았다! (정답: {q["ans"]})</div>', unsafe_allow_html=True)
     st.markdown(f'<div class="exp">💡 {q["exp"]}</div>', unsafe_allow_html=True)
 elif dying:
-    rn, rd, _ = REWARDS[mi]
+    rn,rd,_=REWARDS[mi]
     st.markdown(f'<div class="res-ok">🏆 {mon_name} 격파!</div>', unsafe_allow_html=True)
     st.markdown(f'<div class="reward-box"><span style="font-size:28px">{rn.split()[0]}</span><br><span style="color:#e0e0e0;font-family:\'Noto Sans KR\',sans-serif;font-size:14px">{rd}</span></div>', unsafe_allow_html=True)
 elif lc is True:
-    ce = "+5" if "coin_bonus" in st.session_state.collected_effects else ""
-    st.markdown(f'<div class="res-ok">✅ 크리티컬 히트! ({hits}/{cur_hits_needed}) +{10+combo*5}코인 {ce}</div>', unsafe_allow_html=True)
-    if combo >= 2:
-        st.markdown(f'<div class="combo-box"><span style="color:#ffa500;font-family:\'Press Start 2P\',cursive;font-size:12px">{COMBO_MSG[min(combo,len(COMBO_MSG)-1)]}</span></div>', unsafe_allow_html=True)
+    ce="+5" if "coin_bonus" in st.session_state.collected_effects else ""
+    st.markdown(f'<div class="res-ok">✅ 히트! ({hits}/{cur_hits_needed}) +{10+combo*5}코인 {ce}</div>', unsafe_allow_html=True)
+    if combo>=2: st.markdown(f'<div class="combo-box"><span style="color:#ffa500;font-family:\'Press Start 2P\',cursive;font-size:12px">{COMBO_MSG[min(combo,len(COMBO_MSG)-1)]}</span></div>', unsafe_allow_html=True)
     st.markdown(f'<div class="exp">💡 {q["exp"]}</div>', unsafe_allow_html=True)
 elif lc is False:
     st.markdown(f'<div class="res-ng">💥 오답! (정답: {q["ans"]})</div>', unsafe_allow_html=True)
@@ -437,59 +539,55 @@ if not dying:
     st.markdown(f'<div class="qcard">❓ {q["q"]}</div>', unsafe_allow_html=True)
 
 if not st.session_state.answered:
-    if not st.session_state.hint_used_this_q and st.session_state.hints_left > 0:
-        hc1,hc2,hc3 = st.columns([1,2,1])
+    if not st.session_state.hint_used_this_q and st.session_state.hints_left>0:
+        hc1,hc2,hc3=st.columns([1,2,1])
         with hc2:
             if st.button(f"🧪 힌트 사용 (남은 {st.session_state.hints_left}개)", key="hint_btn"):
-                st.session_state.hints_left -= 1; st.session_state.hint_used_this_q = True; st.rerun()
-    opts = q["opts"]; disabled_opt = None
+                st.session_state.hints_left-=1; st.session_state.hint_used_this_q=True; st.rerun()
+    opts=q["opts"]; disabled_opt=None
     if st.session_state.hint_used_this_q:
-        wrong = [o for o in opts if o != q["ans"]]
-        if wrong: random.seed(f"{mi}_{qi}_h"); disabled_opt = random.choice(wrong)
-    c1,c2,c3 = st.columns(3)
-    for col,opt,sk in zip([c1,c2,c3], opts, SKILLS):
+        wrong=[o for o in opts if o!=q["ans"]]
+        if wrong: random.seed(f"{mi}_{qi}_h"); disabled_opt=random.choice(wrong)
+    c1,c2,c3=st.columns(3)
+    for col,opt,sk in zip([c1,c2,c3],opts,SKILLS):
         with col:
-            if opt == disabled_opt:
-                st.button(f"🚫 {opt}", key=f"o_{mi}_{qi}_{opt}", disabled=True)
-            elif st.button(f"{sk} {opt}", key=f"o_{mi}_{qi}_{opt}"):
-                correct = (opt == q["ans"])
-                st.session_state.answered = True
+            if opt==disabled_opt:
+                st.button(f"🚫 {opt}",key=f"o_{mi}_{qi}_{opt}",disabled=True)
+            elif st.button(f"{sk} {opt}",key=f"o_{mi}_{qi}_{opt}"):
+                correct=(opt==q["ans"]); st.session_state.answered=True
                 if correct:
-                    nc = combo+1; st.session_state.combo = nc
-                    st.session_state.max_combo = max(st.session_state.max_combo, nc)
-                    cg = 10 + nc*5 + (5 if "coin_bonus" in st.session_state.collected_effects else 0)
-                    st.session_state.coins += cg; st.session_state.total_correct += 1
-                    st.session_state.last_correct = True
-                    nh = hits+1; st.session_state.mon_hits = nh
-                    if nh >= cur_hits_needed:
-                        st.session_state.mon_dying = True
-                        rn, _, ek = REWARDS[mi]
+                    nc=combo+1; st.session_state.combo=nc
+                    st.session_state.max_combo=max(st.session_state.max_combo,nc)
+                    cg=10+nc*5+(5 if "coin_bonus" in st.session_state.collected_effects else 0)
+                    st.session_state.coins+=cg; st.session_state.total_correct+=1
+                    st.session_state.last_correct=True
+                    nh=hits+1; st.session_state.mon_hits=nh
+                    if nh>=cur_hits_needed:
+                        st.session_state.mon_dying=True
+                        rn,_,ek=REWARDS[mi]
                         st.session_state.collected_items.append(rn)
                         st.session_state.collected_effects.append(ek)
-                        st.session_state.coins += 50
-                        if ek == "hint_bonus": st.session_state.hints_left += 1
-                        if ek == "shield" and not st.session_state.shield_active: st.session_state.shield_active = True
+                        st.session_state.coins+=50
+                        if ek=="hint_bonus": st.session_state.hints_left+=1
+                        if ek=="shield" and not st.session_state.shield_active: st.session_state.shield_active=True
                 else:
-                    st.session_state.combo = 0; st.session_state.total_wrong += 1
+                    st.session_state.combo=0; st.session_state.total_wrong+=1
                     if st.session_state.shield_active and not st.session_state.shield_used:
-                        st.session_state.shield_active = False; st.session_state.shield_used = True
-                        st.session_state.last_correct = "shielded"
+                        st.session_state.shield_active=False; st.session_state.shield_used=True
+                        st.session_state.last_correct="shielded"
                     else:
-                        st.session_state.player_hp = max(0,php-1); st.session_state.last_correct = False
-                    st.session_state.encourage_msg = random.choice(ENCOURAGE)
+                        st.session_state.player_hp=max(0,php-1); st.session_state.last_correct=False
+                    st.session_state.encourage_msg=random.choice(ENCOURAGE)
                 st.rerun()
 else:
     if dying:
-        nxt = mi+1
-        if nxt >= len(MONSTERS):
-            if st.button("🏆 클리어!", type="primary", use_container_width=True):
-                st.session_state.update({"mon_idx":nxt,"mon_hits":0,"qpool_idx":0,"answered":False,"last_correct":None,"mon_dying":False,"hint_used_this_q":False,"shield_used":False})
-                st.rerun()
+        nxt=mi+1
+        if nxt>=len(MONSTERS):
+            if st.button("🏆 클리어!",type="primary",use_container_width=True):
+                st.session_state.update({"mon_idx":nxt,"mon_hits":0,"qpool_idx":0,"answered":False,"last_correct":None,"mon_dying":False,"hint_used_this_q":False,"shield_used":False}); st.rerun()
         else:
-            if st.button("🛒 상점 → 다음 층!", type="primary", use_container_width=True):
-                st.session_state.update({"mon_idx":nxt,"mon_hits":0,"qpool_idx":0,"answered":False,"last_correct":None,"mon_dying":False,"hint_used_this_q":False,"shield_used":False,"screen":"shop"})
-                st.rerun()
+            if st.button("🛒 상점 → 다음 층!",type="primary",use_container_width=True):
+                st.session_state.update({"mon_idx":nxt,"mon_hits":0,"qpool_idx":0,"answered":False,"last_correct":None,"mon_dying":False,"hint_used_this_q":False,"shield_used":False,"screen":"shop"}); st.rerun()
     else:
-        if st.button("▶ 다음 문제", type="primary", use_container_width=True):
-            st.session_state.update({"qpool_idx":qi+1,"answered":False,"last_correct":None,"hint_used_this_q":False})
-            st.rerun()
+        if st.button("▶ 다음 문제",type="primary",use_container_width=True):
+            st.session_state.update({"qpool_idx":qi+1,"answered":False,"last_correct":None,"hint_used_this_q":False}); st.rerun()
