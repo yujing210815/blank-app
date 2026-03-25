@@ -1,5 +1,5 @@
 import streamlit as st
-import random, os, base64, pathlib
+import random, os, base64, pathlib, time, json
 
 st.set_page_config(page_title="마왕의 성", page_icon="⚔️", layout="centered")
 
@@ -14,6 +14,17 @@ OPENING_B64   = img_to_b64(_DIR / "quiz_opening.png")
 ENDING_B64    = img_to_b64(_DIR / "quiz_ending.png")
 GAMEOVER_B64  = img_to_b64(_DIR / "quiz_gameover.png")
 BATTLE_BG_B64 = img_to_b64(_DIR / "battle_bg.png")
+LB_PATH = _DIR / "leaderboard.json"
+
+def load_lb():
+    if LB_PATH.exists():
+        try: return json.loads(LB_PATH.read_text(encoding="utf-8"))
+        except: return []
+    return []
+
+def save_lb(lb):
+    lb = sorted(lb, key=lambda x: x['score'], reverse=True)[:5]
+    LB_PATH.write_text(json.dumps(lb, ensure_ascii=False), encoding="utf-8")
 
 # ────────────────────────────────────────────────────────────
 # 업그레이드 도트 스프라이트 (더 많은 색상 · 디테일 · 음영)
@@ -278,7 +289,7 @@ MATH_POOL = [
 ]
 
 DUNGEONS = {
-    "🧠 재미 상식 던전": QUIZ_POOL,
+    "🧠 기본 상식 던전": QUIZ_POOL,
     "🧮 수학 기초 던전": MATH_POOL
 }
 
@@ -286,6 +297,7 @@ DUNGEONS = {
 HITS_NEEDED = 3
 MAX_HP = 5
 MAX_HINTS = 2
+TIME_LIMIT = 15.0
 
 def init(dungeon_name="🧠 기본 상식 던전"):
     pool_data = DUNGEONS.get(dungeon_name, QUIZ_POOL)
@@ -303,6 +315,8 @@ def init(dungeon_name="🧠 기본 상식 던전"):
         "collected_items":[],"collected_effects":[],
         "encourage_msg":"",
         "shield_active":False,"shield_used":False,
+        "q_start_time":0, "undead_revived":False,
+        "demon_blind_opt":None, "chest_opened":False, "time_over":False
     })
 
 if "screen" not in st.session_state: init()
@@ -371,6 +385,8 @@ st.markdown("""
   color:#fff;font-family:'Noto Sans KR',sans-serif;font-weight:700;font-size:18px;
   box-shadow:3px 3px 0 #5c6bc0;transition:all .15s;padding:14px 10px;}
 .stButton>button:hover{background:#5c6bc0;box-shadow:none;transform:translate(3px,3px);}
+@keyframes timerAnim{from{width:100%;background-color:#4CAF50;}50%{background-color:#FF9800;}to{width:0%;background-color:#f44336;}}
+.timer-anim{height:8px; border-radius:4px; animation:timerAnim 15s linear forwards;}
 
 @keyframes heroIdle{0%,100%{transform:translateY(0);}50%{transform:translateY(-8px);}}
 @keyframes heroAtk{0%{transform:translateX(0);}40%{transform:translateX(40px) scale(1.1);}100%{transform:translateX(0);}}
@@ -406,6 +422,17 @@ if screen == "title":
 
     if OPENING_B64:
         st.markdown(f'<img src="{OPENING_B64}" style="width:100%;border:4px solid #ffd700;border-radius:10px;box-shadow:0 0 40px rgba(255,215,0,.4);margin-bottom:8px">', unsafe_allow_html=True)
+        
+    lb = load_lb()
+    if lb:
+        lb_html = "<div style='background:rgba(0,0,0,0.5);border:2px solid #ffd700;border-radius:10px;padding:12px;margin:10px 0;text-align:center;'>\n <p style='color:#ffd700;font-family:\"Press Start 2P\",cursive;font-size:14px;margin-bottom:10px;'>🏆 명예의 전당 TOP 5 🏆</p>\n"
+        colors = ["#FFD700", "#C0C0C0", "#CD7F32", "#aaa", "#aaa"]
+        for i, entry in enumerate(lb):
+            rank_color = colors[i] if i < len(colors) else "#aaa"
+            lb_html += f"<p style='color:{rank_color};margin:6px 0;font-family:\"Noto Sans KR\",sans-serif;font-weight:bold;'>{i+1}위: {entry['name']} <span style='font-size:13px;color:#eee'>- {entry['score']}점 (최대 {entry['combo']}콤보)</span></p>\n"
+        lb_html += "</div>"
+        st.markdown(lb_html, unsafe_allow_html=True)
+
     st.markdown("""<div style="text-align:center;padding:16px 0 8px">
       <p class="pix pulse" style="color:#ffd700;font-size:22px;margin:0">⚔ 마왕의 성 ⚔</p>
       <p class="pix" style="color:#b39ddb;font-size:13px;margin-top:14px">QUIZ DUNGEON</p>
@@ -468,18 +495,81 @@ if screen == "shop":
     with col2:
         nf=floor_names[mi] if mi<len(floor_names) else "최종"
         if st.button(f"⚔️ {nf}으로!", type="primary", use_container_width=True):
-            st.session_state.screen="game"; st.rerun()
+            if mi < len(MONSTERS) and random.random() < 0.3:
+                st.session_state.screen="event"
+            else:
+                st.session_state.screen="game"
+            st.rerun()
+    st.stop()
+
+# ═══════════════ EVENT (RANDOM BOX) ═══════════════
+if screen == "event":
+    st.markdown("""<div style="text-align:center;padding:20px;">
+        <p class="pix pulse" style="color:#ffd700;font-size:24px;">🎁 비밀의 보물상자 발견!</p>
+        <p style="color:#ccc;font-size:16px;margin-top:10px;">길을 걷던 중 반짝이는 상자를 발견했습니다.</p>
+    </div>""", unsafe_allow_html=True)
+    
+    if st.session_state.chest_opened:
+        r = random.Random(st.session_state.total_correct + st.session_state.coins)
+        event_num = r.randint(1, 100)
+        msg = ""
+        bg_color = "rgba(76,175,80,0.2)"
+        border = "#4CAF50"
+        
+        if event_num <= 40:
+            msg = "💰 엄청난 보화가 들었다! (코인 +50)"
+            st.session_state.coins += 50
+        elif event_num <= 70:
+            msg = "❤️ 신선한 과일이 들어있다! (HP +1)"
+            st.session_state.player_hp = min(MAX_HP, st.session_state.player_hp + 1)
+        elif event_num <= 85:
+            msg = "🧪 오래된 힌트 포션을 얻었다! (포션 +1)"
+            st.session_state.hints_left += 1
+        else:
+            msg = "💥 앗! 함정이다! 독가스가 뿜어져 나왔다! (HP -1)"
+            bg_color = "rgba(244,67,54,0.2)"
+            border = "#f44336"
+            st.session_state.player_hp = max(0, st.session_state.player_hp - 1)
+            
+        st.markdown(f"""<div style="text-align:center;background:{bg_color};border:2px solid {border};border-radius:10px;padding:20px;margin:20px 0;">
+            <p style="color:#fff;font-size:20px;font-weight:bold;">{msg}</p></div>""", unsafe_allow_html=True)
+            
+        col1,col2,col3=st.columns([1,2,1])
+        with col2:
+            if st.session_state.player_hp <= 0:
+                if st.button("☠️ 게임 오버", type="primary", use_container_width=True):
+                    st.session_state.screen = "game"; st.rerun()
+            else:
+                if st.button("▶ 다음 층으로", type="primary", use_container_width=True):
+                    st.session_state.chest_opened = False
+                    st.session_state.screen = "game"; st.rerun()
+    else:
+        st.markdown('<div style="text-align:center;font-size:80px;margin:10px 0;">📦</div>', unsafe_allow_html=True)
+        col1,col2,col3=st.columns([1,2,1])
+        with col2:
+            if st.button("✨ 상자 열기", type="primary", use_container_width=True):
+                st.session_state.chest_opened = True; st.rerun()
+            if st.button("무시하고 지나간다", use_container_width=True):
+                st.session_state.screen = "game"; st.rerun()
     st.stop()
 
 # ═══════════════ GAME OVER ═══════════════
 mi=st.session_state.mon_idx; php=st.session_state.player_hp; hero_name=st.session_state.hero_name
 if php<=0:
+    score = st.session_state.total_correct * 100 + st.session_state.coins * 2 + st.session_state.max_combo * 50
+    if "lb_saved_go" not in st.session_state:
+        lb = load_lb()
+        lb.append({"name": hero_name, "score": score, "combo": st.session_state.max_combo})
+        save_lb(lb)
+        st.session_state.lb_saved_go = True
+        
     if GAMEOVER_B64:
         st.markdown(f'<img src="{GAMEOVER_B64}" style="width:100%;border:4px solid #f44336;border-radius:10px;box-shadow:0 0 40px rgba(244,67,54,.4);margin-bottom:10px">', unsafe_allow_html=True)
     st.markdown(f"""<div style="text-align:center;padding:20px">
       <p class="pix" style="color:#f44336;font-size:26px;text-shadow:0 0 20px #f44336">💀 GAME OVER 💀</p>
       <p style="color:#ccc;font-family:'Noto Sans KR',sans-serif;font-size:18px;margin-top:8px">{hero_name}(이)가 <b>{mi+1}층</b>의 퀴즈에서 쓰러졌습니다...</p>
-      <p style="color:#ffd700;font-family:'Noto Sans KR',sans-serif;font-size:15px;margin-top:12px">
+      <p style="color:#ffd700;font-family:'Noto Sans KR',sans-serif;font-size:16px;margin-top:12px;font-weight:bold;">최종 스코어: {score}점</p>
+      <p style="color:#e0e0e0;font-family:'Noto Sans KR',sans-serif;font-size:14px;margin-top:4px">
         📊 정답 {st.session_state.total_correct} · 오답 {st.session_state.total_wrong} · 💰 {st.session_state.coins} · ⚡최대콤보 {st.session_state.max_combo}</p>
     </div>""", unsafe_allow_html=True)
     col1,col2,col3=st.columns([1,2,1])
@@ -499,12 +589,21 @@ if mi>=len(MONSTERS):
     rt={"S":"전설의 용사","A":"위대한 모험가","B":"숙련된 전사","C":"초보 영웅","D":"수습 용사"}[rank]
     tc,tw=st.session_state.total_correct,st.session_state.total_wrong
     coins=st.session_state.coins*(2 if "coin_double" in st.session_state.collected_effects else 1)
+    
+    score = tc * 100 + coins * 2 + st.session_state.max_combo * 50 + php * 200
+    if "lb_saved_clear" not in st.session_state:
+        lb = load_lb()
+        lb.append({"name": hero_name, "score": score, "combo": st.session_state.max_combo})
+        save_lb(lb)
+        st.session_state.lb_saved_clear = True
+
     st.markdown(f"""<div style="text-align:center;padding:16px 0">
       <p class="pix pulse" style="color:#ffd700;font-size:22px">👑 DUNGEON CLEAR! 👑</p>
       <p style="color:#e0e0e0;font-family:'Noto Sans KR',sans-serif;font-size:20px;margin-top:12px"><b>{hero_name}</b>(이)가 마왕을 쓰러뜨렸습니다!</p>
       <p class="pix" style="color:{rc};font-size:32px;margin:12px 0">RANK: {rank}</p>
       <p style="color:#b39ddb;font-family:'Noto Sans KR',sans-serif;font-size:16px">🏅 {rt} · HP {"❤️"*php}{"🖤"*(MAX_HP-php)}</p>
-      <p style="color:#ffd740;font-family:'Noto Sans KR',sans-serif;font-size:16px;margin-top:8px">
+      <p style="color:#FF9800;font-family:'Noto Sans KR',sans-serif;font-size:20px;margin-top:8px;font-weight:bold;">최종 스코어: {score}점</p>
+      <p style="color:#ffd740;font-family:'Noto Sans KR',sans-serif;font-size:16px;margin-top:4px">
         ✅{tc} · ❌{tw} · 💰{coins} · ⚡{st.session_state.max_combo}콤보</p>
     </div>""", unsafe_allow_html=True)
     if st.session_state.collected_items:
@@ -523,7 +622,23 @@ lc=st.session_state.last_correct; quiz=st.session_state.shuffled_quiz; combo=st.
 
 mon_name,mon_spr,mon_ico=MONSTERS[mi]
 q_pool=quiz[mi]; q=q_pool[qi%len(q_pool)]
-cur_hits_needed=2 if ("power_hit" in st.session_state.collected_effects and mi>2) else HITS_NEEDED
+
+# Gimmick: Orc has more HP
+cur_hits_needed = 4 if mi == 2 else HITS_NEEDED
+# Power Hit reduces HP
+if "power_hit" in st.session_state.collected_effects and mi > 2:
+    cur_hits_needed = max(1, cur_hits_needed - 1)
+
+# Gimmick: Demon Blinds one option
+if mi == 4 and st.session_state.demon_blind_opt is None:
+    st.session_state.demon_blind_opt = random.choice(q["opts"])
+
+import time
+# Timer Logic
+if st.session_state.q_start_time == 0:
+    st.session_state.q_start_time = time.time()
+elapsed = time.time() - st.session_state.q_start_time
+is_time_over = elapsed > TIME_LIMIT
 
 # 스프라이트 결정
 hero_spr=HERO_ATK if lc is True else (HERO_HIT if lc is False else HERO_IDLE)
@@ -541,6 +656,10 @@ overall_pct=int((mi*HITS_NEEDED+hits)/(len(MONSTERS)*HITS_NEEDED)*100)
 st.markdown(f'<div class="progress-bar"><div class="progress-fill" style="width:{overall_pct}%">{overall_pct}%</div></div>', unsafe_allow_html=True)
 st.markdown(f'<p class="pix" style="color:#ffd700;font-size:14px;text-align:center;padding:6px 0;text-shadow:0 0 10px #ffd700">⚔ 마왕의 성 ⚔</p>', unsafe_allow_html=True)
 st.markdown(f'<p class="pix" style="color:#b39ddb;font-size:12px;text-align:center;margin-bottom:6px">{floor_names[mi]}</p>', unsafe_allow_html=True)
+
+if not dying and lc is None:
+    st.markdown(f'<div style="background:#222;border-radius:4px;width:100%;height:10px;border:1px solid #555;margin-bottom:12px;"><div class="timer-anim" style="animation-delay: -{elapsed}s;"></div></div>', unsafe_allow_html=True)
+
 
 shield_html='<div class="hud-item hud-shield">🛡️ ON</div>' if st.session_state.shield_active else ""
 st.markdown(f"""<div class="hud-bar">
@@ -601,7 +720,12 @@ elif lc is True:
     if combo>=2: st.markdown(f'<div class="combo-box"><span style="color:#ffa500;font-family:\'Press Start 2P\',cursive;font-size:12px">{COMBO_MSG[min(combo,len(COMBO_MSG)-1)]}</span></div>', unsafe_allow_html=True)
     st.markdown(f'<div class="exp">💡 {q["exp"]}</div>', unsafe_allow_html=True)
 elif lc is False:
-    st.markdown(f'<div class="res-ng">💥 오답! (정답: {q["ans"]})</div>', unsafe_allow_html=True)
+    if st.session_state.get("time_over", False):
+        st.markdown(f'<div class="res-ng">⏱️ 타임 오버! 늦었습니다. (정답: {q["ans"]})</div>', unsafe_allow_html=True)
+    else:
+        st.markdown(f'<div class="res-ng">💥 오답! (정답: {q["ans"]})</div>', unsafe_allow_html=True)
+    if mi == 1:
+        st.markdown('<div class="encourage" style="color:#ff8a80;border-color:#ff5252">고블린이 코인을 빼앗아갔습니다! (-10코인)</div>', unsafe_allow_html=True)
     st.markdown(f'<div class="encourage">{st.session_state.encourage_msg}</div>', unsafe_allow_html=True)
     st.markdown(f'<div class="exp">💡 {q["exp"]}</div>', unsafe_allow_html=True)
 
@@ -621,29 +745,50 @@ if not st.session_state.answered:
     c1,c2,c3=st.columns(3)
     for col,opt,sk in zip([c1,c2,c3],opts,SKILLS):
         with col:
+            d_opt = "???" if (mi == 4 and opt == st.session_state.demon_blind_opt) else opt
             if opt==disabled_opt:
-                st.button(f"🚫 {opt}",key=f"o_{mi}_{qi}_{opt}",disabled=True)
-            elif st.button(f"{sk} {opt}",key=f"o_{mi}_{qi}_{opt}"):
-                correct=(opt==q["ans"]); st.session_state.answered=True
+                st.button(f"🚫 {d_opt}",key=f"o_{mi}_{qi}_{opt}",disabled=True)
+            elif st.button(f"{sk} {d_opt}",key=f"o_{mi}_{qi}_{opt}"):
+                # Time out check
+                elapsed_check = time.time() - st.session_state.q_start_time
+                if elapsed_check > TIME_LIMIT:
+                    st.session_state.time_over = True
+                    correct = False
+                else:
+                    correct=(opt==q["ans"])
+                st.session_state.answered=True
+                
                 if correct:
+                    st.session_state.demon_blind_opt = None
                     nc=combo+1; st.session_state.combo=nc
                     st.session_state.max_combo=max(st.session_state.max_combo,nc)
                     cg=10+nc*5+(5 if "coin_bonus" in st.session_state.collected_effects else 0)
                     st.session_state.coins+=cg; st.session_state.total_correct+=1
                     st.session_state.last_correct=True
-                    nh=hits+1; st.session_state.mon_hits=nh
-                    if nh>=cur_hits_needed:
-                        st.session_state.mon_dying=True
-                        rn,_,ek=REWARDS[mi]
-                        st.session_state.collected_items.append(rn)
-                        st.session_state.collected_effects.append(ek)
-                        st.session_state.coins+=50
-                        if ek=="hint_bonus": st.session_state.hints_left+=1
-                        if ek=="shield":
-                            st.session_state.shield_active=True
-                            st.session_state.shield_used=False
+                    nh=hits+1
+                    
+                    # Undead gimmick: revive with hits-1
+                    if mi == 3 and not st.session_state.undead_revived and nh >= cur_hits_needed:
+                        st.session_state.undead_revived = True
+                        st.session_state.mon_hits = cur_hits_needed - 1
+                    else:
+                        st.session_state.mon_hits=nh
+                        if nh>=cur_hits_needed:
+                            st.session_state.mon_dying=True
+                            rn,_,ek=REWARDS[mi]
+                            st.session_state.collected_items.append(rn)
+                            st.session_state.collected_effects.append(ek)
+                            st.session_state.coins+=50
+                            if ek=="hint_bonus": st.session_state.hints_left+=1
+                            if ek=="shield":
+                                st.session_state.shield_active=True
+                                st.session_state.shield_used=False
                 else:
+                    st.session_state.demon_blind_opt = None
                     st.session_state.combo=0; st.session_state.total_wrong+=1
+                    if mi == 1: # Goblin steals coins
+                        st.session_state.coins = max(0, st.session_state.coins - 10)
+                    
                     if st.session_state.shield_active and not st.session_state.shield_used:
                         st.session_state.shield_active=False; st.session_state.shield_used=True
                         st.session_state.last_correct="shielded"
@@ -666,4 +811,4 @@ else:
                 st.session_state.update({"mon_idx":nxt,"mon_hits":0,"qpool_idx":0,"answered":False,"last_correct":None,"mon_dying":False,"hint_used_this_q":False,"shield_used":False,"screen":"shop"}); st.rerun()
     else:
         if st.button("▶ 다음 문제",type="primary",use_container_width=True):
-            st.session_state.update({"qpool_idx":qi+1,"answered":False,"last_correct":None,"hint_used_this_q":False}); st.rerun()
+            st.session_state.update({"qpool_idx":qi+1,"answered":False,"last_correct":None,"hint_used_this_q":False,"q_start_time":0}); st.rerun()
