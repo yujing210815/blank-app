@@ -1,6 +1,6 @@
 import streamlit as st
 import streamlit.components.v1 as components
-import random, os, base64, pathlib, time, json, html as _html
+import random, os, base64, pathlib, time, json
 
 st.set_page_config(page_title="마왕의 성", page_icon="⚔️", layout="centered")
 
@@ -295,247 +295,19 @@ DUNGEONS = {
 }
 
 
-def platformer_html(opts, disabled_opt=None, blind_opt=None, time_limit=15):
-    """Generate HTML/JS for the Mario-style answer selection platformer."""
-    # Build display labels
-    labels_js = []
-    for i, opt in enumerate(opts):
-        if blind_opt and opt == blind_opt:
-            labels_js.append('"???"')
-        else:
-            labels_js.append(f'"{opt}"')
-    disabled_idx = -1
-    if disabled_opt:
-        for i, opt in enumerate(opts):
-            if opt == disabled_opt:
-                disabled_idx = i
-                break
+_platformer_comp = components.declare_component("platformer", path=str(_DIR / "platformer_component"))
 
-    html = f"""
-<div id="platformer-wrap" style="text-align:center;">
-<canvas id="gc" width="640" height="340" tabindex="1"
-  style="border:3px solid #ffd700;border-radius:8px;background:#1a1a2e;
-  image-rendering:pixelated;display:block;margin:0 auto;outline:none;
-  max-width:100%;cursor:pointer;"></canvas>
-<p style="color:#888;font-family:'Noto Sans KR',sans-serif;font-size:13px;margin-top:6px;">
-  ⬅️➡️ 이동 · ⬆️/Space 점프 · 정답 플랫폼 위에 올라서세요!</p>
-</div>
-<script>
-(function(){{
-const C=document.getElementById('gc');
-const X=C.getContext('2d');
-const W=C.width, H=C.height;
-const labels=[{','.join(labels_js)}];
-const disIdx={disabled_idx};
-const TL={time_limit};
-let startT=Date.now();
-// Hero
-let hx=W/2-12, hy=H-60, hvx=0, hvy=0;
-const HW=24, HH=32, GRAV=0.6, JUMP=-11, SPD=4.5;
-let onGround=false, facing=1;
-// Platforms: left/center/right at varying heights
-const plats=[
-  {{x:60, y:H-150, w:160, h:22, idx:0}},
-  {{x:240, y:H-210, w:160, h:22, idx:1}},
-  {{x:420, y:H-150, w:160, h:22, idx:2}},
-];
-// Ground
-const groundY=H-28;
-// Selection
-let selIdx=-1, selTimer=0;
-const SEL_TIME=0.8;
-let answered=false;
-// Keys
-const keys={{}};
-C.addEventListener('keydown',e=>{{keys[e.key]=true;e.preventDefault();}});
-C.addEventListener('keyup',e=>{{keys[e.key]=false;}});
-C.addEventListener('click',()=>C.focus());
-C.focus();
+def run_platformer(labels, disabled_idx=-1, time_limit=15, key=None):
+    """Run the Mario-style platformer and return selected answer index (or None)."""
+    result = _platformer_comp(
+        labels=labels,
+        disabled_idx=disabled_idx,
+        time_limit=time_limit,
+        key=key,
+        default=None
+    )
+    return result
 
-function drawBricks(x,y,w,h){{
-  // brick texture
-  const bw=20,bh=11;
-  for(let row=0;row<Math.ceil(h/bh);row++){{
-    let ox=(row%2===1)?bw/2:0;
-    for(let col=-1;col<Math.ceil(w/bw)+1;col++){{
-      let bx=x+col*bw+ox, by=y+row*bh;
-      if(bx+bw<=x||bx>=x+w||by+bh<=y||by>=y+h) continue;
-      X.save();
-      X.beginPath(); X.rect(x,y,w,h); X.clip();
-      X.fillStyle='#8B4513'; X.fillRect(bx,by,bw-1,bh-1);
-      X.fillStyle='#A0522D'; X.fillRect(bx+1,by+1,bw-3,bh-3);
-      X.fillStyle='#6B3410'; X.fillRect(bx,by+bh-1,bw,1);
-      X.fillStyle='#6B3410'; X.fillRect(bx+bw-1,by,1,bh);
-      X.restore();
-    }}
-  }}
-}}
-
-function drawHero(x, y, f){{
-  X.save();
-  X.translate(x+HW/2, y);
-  if(f<0) X.scale(-1,1);
-  // head
-  X.fillStyle='#FF3322'; X.fillRect(-10,-2,20,6);  // hat
-  X.fillStyle='#CC1100'; X.fillRect(-8,-2,16,3);
-  X.fillStyle='#FDBCB4'; X.fillRect(-8,4,16,10);  // face
-  X.fillStyle='#111'; X.fillRect(-5,6,3,3);        // eye left
-  X.fillStyle='#111'; X.fillRect(3,6,3,3);          // eye right
-  // body
-  X.fillStyle='#1565C0'; X.fillRect(-9,14,18,12);  // body
-  X.fillStyle='#FFD700'; X.fillRect(-3,16,6,3);     // belt
-  // legs
-  X.fillStyle='#1565C0';
-  if(!onGround){{
-    X.fillRect(-8,26,6,8); X.fillRect(2,26,6,8);
-  }} else {{
-    let legOff=Math.sin(Date.now()/100)*2;
-    X.fillRect(-8,26,6,8+legOff); X.fillRect(2,26,6,8-legOff);
-  }}
-  X.fillStyle='#3E2723'; X.fillRect(-9,33,7,3); X.fillRect(2,33,7,3); // shoes
-  X.restore();
-}}
-
-function drawGround(){{
-  X.fillStyle='#2d5a1e';
-  X.fillRect(0,groundY,W,H-groundY);
-  X.fillStyle='#3a7a28';
-  X.fillRect(0,groundY,W,4);
-  // grass tufts
-  X.fillStyle='#4CAF50';
-  for(let i=0;i<W;i+=18){{
-    X.fillRect(i,groundY-2,3,4);
-    X.fillRect(i+8,groundY-3,2,5);
-  }}
-}}
-
-function drawTimer(){{
-  let elapsed=(Date.now()-startT)/1000;
-  let pct=Math.max(0,1-elapsed/TL);
-  let barW=W-40;
-  X.fillStyle='rgba(0,0,0,0.5)'; X.fillRect(18,8,barW+4,14);
-  X.strokeStyle='#555'; X.lineWidth=1; X.strokeRect(18,8,barW+4,14);
-  let r=Math.floor(255*(1-pct)), g=Math.floor(255*pct);
-  X.fillStyle=`rgb(${{r}},${{g}},80)`;
-  X.fillRect(20,10,barW*pct,10);
-  X.fillStyle='#fff'; X.font='bold 9px "Press Start 2P",monospace';
-  X.textAlign='center';
-  X.fillText(Math.ceil(TL-elapsed)+'s',W/2,19);
-  return elapsed>=TL;
-}}
-
-function drawLabel(p){{
-  let col=p.idx===disIdx?'rgba(255,60,60,0.85)':'rgba(255,255,255,0.95)';
-  let bgCol=p.idx===disIdx?'rgba(180,30,30,0.7)':'rgba(0,0,0,0.7)';
-  X.fillStyle=bgCol;
-  let tw=X.measureText(labels[p.idx]).width+16;
-  X.fillRect(p.x+p.w/2-tw/2, p.y-24, tw, 20);
-  X.strokeStyle=p.idx===disIdx?'#f44336':'#ffd700';
-  X.lineWidth=2;
-  X.strokeRect(p.x+p.w/2-tw/2, p.y-24, tw, 20);
-  X.fillStyle=col; X.font='bold 13px "Noto Sans KR",sans-serif';
-  X.textAlign='center'; X.textBaseline='middle';
-  X.fillText(p.idx===disIdx?'🚫 '+labels[p.idx]:labels[p.idx], p.x+p.w/2, p.y-14);
-  if(selIdx===p.idx){{
-    let prog=selTimer/SEL_TIME;
-    X.fillStyle='rgba(76,175,80,0.4)';
-    X.fillRect(p.x, p.y-2, p.w*prog, 4);
-    X.fillStyle='#69f0ae'; X.font='bold 11px "Noto Sans KR"';
-    X.fillText(Math.ceil((SEL_TIME-selTimer)*10)/10+'s', p.x+p.w/2, p.y-32);
-  }}
-}}
-
-function update(dt){{
-  // input
-  if(keys['ArrowLeft']||keys['a']) {{ hvx=-SPD; facing=-1; }}
-  else if(keys['ArrowRight']||keys['d']) {{ hvx=SPD; facing=1; }}
-  else hvx*=0.7;
-  if(Math.abs(hvx)<0.3) hvx=0;
-  if((keys['ArrowUp']||keys[' ']||keys['w']) && onGround){{
-    hvy=JUMP; onGround=false;
-  }}
-  // physics
-  hvy+=GRAV;
-  hx+=hvx; hy+=hvy;
-  // ground
-  onGround=false;
-  if(hy+HH>=groundY){{hy=groundY-HH; hvy=0; onGround=true;}}
-  // walls
-  if(hx<0) hx=0; if(hx+HW>W) hx=W-HW;
-  // platform collision (only when falling)
-  if(hvy>=0){{
-    for(let p of plats){{
-      if(hx+HW>p.x+4 && hx<p.x+p.w-4 && hy+HH>=p.y && hy+HH<=p.y+p.h+8){{
-        hy=p.y-HH; hvy=0; onGround=true;
-        break;
-      }}
-    }}
-  }}
-  // selection detection
-  let curPlat=-1;
-  for(let p of plats){{
-    if(hx+HW>p.x+4 && hx<p.x+p.w-4 && Math.abs((hy+HH)-p.y)<4 && p.idx!==disIdx){{
-      curPlat=p.idx; break;
-    }}
-  }}
-  if(curPlat>=0 && curPlat===selIdx){{
-    selTimer+=dt;
-    if(selTimer>=SEL_TIME && !answered){{
-      answered=true;
-      // Send answer to Streamlit
-      const url=new URL(window.top.location.href);
-      url.searchParams.set('ans_idx',curPlat);
-      window.top.location.href=url.toString();
-    }}
-  }} else {{
-    selIdx=curPlat; selTimer=0;
-  }}
-}}
-
-let lastT=performance.now();
-function loop(now){{
-  let dt=(now-lastT)/1000; lastT=now;
-  if(dt>0.1) dt=0.1;
-  if(!answered){{
-    update(dt);
-    let timeUp=false;
-    // draw
-    X.clearRect(0,0,W,H);
-    // bg gradient
-    let grd=X.createLinearGradient(0,0,0,H);
-    grd.addColorStop(0,'#0d0d2a'); grd.addColorStop(1,'#1a1a3e');
-    X.fillStyle=grd; X.fillRect(0,0,W,H);
-    // stars
-    X.fillStyle='#fff';
-    for(let i=0;i<30;i++){{
-      let sx=(i*137+50)%W, sy=(i*97+20)%(groundY-30);
-      let sz=1+((i*3)%2);
-      X.globalAlpha=0.3+((Math.sin(now/1000+i)*0.3));
-      X.fillRect(sx,sy,sz,sz);
-    }}
-    X.globalAlpha=1;
-    drawGround();
-    // platforms
-    for(let p of plats){{
-      drawBricks(p.x,p.y,p.w,p.h);
-      drawLabel(p);
-    }}
-    drawHero(hx,hy,facing);
-    timeUp=drawTimer();
-    if(timeUp && !answered){{
-      answered=true;
-      const url=new URL(window.top.location.href);
-      url.searchParams.set('ans_idx','-1');
-      window.top.location.href=url.toString();
-    }}
-  }}
-  requestAnimationFrame(loop);
-}}
-requestAnimationFrame(loop);
-}})();
-</script>
-"""
-    return html
 
 HITS_NEEDED = 3
 MAX_HP = 5
@@ -866,70 +638,6 @@ lc=st.session_state.last_correct; quiz=st.session_state.shuffled_quiz; combo=st.
 mon_name,mon_spr,mon_ico=MONSTERS[mi]
 q_pool=quiz[mi]; q=q_pool[qi%len(q_pool)]
 
-# ─── Platformer answer handler (query params) ───
-_ans_param = st.query_params.get("ans_idx", None)
-if _ans_param is not None and not st.session_state.answered:
-    st.query_params.clear()
-    ans_idx = int(_ans_param)
-    opts = q["opts"]
-    disabled_opt_qp = None
-    if st.session_state.hint_used_this_q:
-        wrong = [o for o in opts if o != q["ans"]]
-        if wrong:
-            random.seed(f"{mi}_{qi}_h")
-            disabled_opt_qp = random.choice(wrong)
-    if ans_idx < 0:  # time over
-        correct = False
-        st.session_state.time_over = True
-    elif disabled_opt_qp and ans_idx < len(opts) and opts[ans_idx] == disabled_opt_qp:
-        correct = False  # picked the disabled (hint) option somehow
-    elif ans_idx < len(opts):
-        correct = (opts[ans_idx] == q["ans"])
-    else:
-        correct = False
-    st.session_state.answered = True
-    if correct:
-        st.session_state.demon_blind_opt = None
-        nc = combo + 1; st.session_state.combo = nc
-        st.session_state.max_combo = max(st.session_state.max_combo, nc)
-        cg = 10 + nc * 5 + (5 if "coin_bonus" in st.session_state.collected_effects else 0)
-        st.session_state.coins += cg; st.session_state.total_correct += 1
-        st.session_state.last_correct = True
-        nh = hits + 1
-        if mi == 3 and not st.session_state.undead_revived and nh >= (4 if mi == 2 else HITS_NEEDED):
-            st.session_state.undead_revived = True
-            st.session_state.mon_hits = (4 if mi == 2 else HITS_NEEDED) - 1
-        else:
-            cur_h = 4 if mi == 2 else HITS_NEEDED
-            if "power_hit" in st.session_state.collected_effects and mi > 2:
-                cur_h = max(1, cur_h - 1)
-            st.session_state.mon_hits = nh
-            if nh >= cur_h:
-                st.session_state.mon_dying = True
-                rn, _, ek = REWARDS[mi]
-                st.session_state.collected_items.append(rn)
-                st.session_state.collected_effects.append(ek)
-                st.session_state.coins += 50
-                if ek == "hint_bonus": st.session_state.hints_left += 1
-                if ek == "shield":
-                    st.session_state.shield_active = True
-                    st.session_state.shield_used = False
-    else:
-        st.session_state.demon_blind_opt = None
-        st.session_state.combo = 0; st.session_state.total_wrong += 1
-        if mi == 1:
-            st.session_state.coins = max(0, st.session_state.coins - 10)
-        if st.session_state.shield_active and not st.session_state.shield_used:
-            st.session_state.shield_active = False; st.session_state.shield_used = True
-            st.session_state.last_correct = "shielded"
-        else:
-            st.session_state.player_hp = max(0, php - 1); st.session_state.last_correct = False
-        st.session_state.encourage_msg = random.choice(ENCOURAGE)
-    st.rerun()
-
-# Refresh after query param handling
-hits=st.session_state.mon_hits; dying=st.session_state.mon_dying
-lc=st.session_state.last_correct; combo=st.session_state.combo; coins=st.session_state.coins
 
 # Gimmick: Orc has more HP
 cur_hits_needed = 4 if mi == 2 else HITS_NEEDED
@@ -941,7 +649,6 @@ if "power_hit" in st.session_state.collected_effects and mi > 2:
 if mi == 4 and st.session_state.demon_blind_opt is None:
     st.session_state.demon_blind_opt = random.choice(q["opts"])
 
-import time
 # Timer Logic
 if st.session_state.q_start_time == 0:
     st.session_state.q_start_time = time.time()
@@ -1051,9 +758,66 @@ if not st.session_state.answered:
         wrong=[o for o in opts if o!=q["ans"]]
         if wrong: random.seed(f"{mi}_{qi}_h"); disabled_opt=random.choice(wrong)
     blind_opt = st.session_state.demon_blind_opt if mi == 4 else None
-    plat_html = platformer_html(opts, disabled_opt=disabled_opt, blind_opt=blind_opt, time_limit=int(TIME_LIMIT))
-    escaped = _html.escape(plat_html)
-    st.markdown(f'<iframe srcdoc="{escaped}" sandbox="allow-scripts allow-top-navigation allow-top-navigation-by-user-activation" style="width:100%;height:400px;border:none;" scrolling="no"></iframe>', unsafe_allow_html=True)
+    display_labels = []
+    for opt in opts:
+        if blind_opt and opt == blind_opt:
+            display_labels.append("???")
+        else:
+            display_labels.append(opt)
+    dis_idx = -1
+    if disabled_opt:
+        for i2, o2 in enumerate(opts):
+            if o2 == disabled_opt:
+                dis_idx = i2
+                break
+    plat_result = run_platformer(display_labels, disabled_idx=dis_idx, time_limit=int(TIME_LIMIT), key=f"plat_{mi}_{qi}")
+    if plat_result is not None:
+        ans_idx = int(plat_result)
+        if ans_idx < 0:
+            correct = False
+            st.session_state.time_over = True
+        elif disabled_opt and ans_idx < len(opts) and opts[ans_idx] == disabled_opt:
+            correct = False
+        elif ans_idx < len(opts):
+            correct = (opts[ans_idx] == q["ans"])
+        else:
+            correct = False
+        st.session_state.answered = True
+        if correct:
+            st.session_state.demon_blind_opt = None
+            nc = combo + 1; st.session_state.combo = nc
+            st.session_state.max_combo = max(st.session_state.max_combo, nc)
+            cg = 10 + nc * 5 + (5 if "coin_bonus" in st.session_state.collected_effects else 0)
+            st.session_state.coins += cg; st.session_state.total_correct += 1
+            st.session_state.last_correct = True
+            nh = hits + 1
+            if mi == 3 and not st.session_state.undead_revived and nh >= cur_hits_needed:
+                st.session_state.undead_revived = True
+                st.session_state.mon_hits = cur_hits_needed - 1
+            else:
+                st.session_state.mon_hits = nh
+                if nh >= cur_hits_needed:
+                    st.session_state.mon_dying = True
+                    rn, _, ek = REWARDS[mi]
+                    st.session_state.collected_items.append(rn)
+                    st.session_state.collected_effects.append(ek)
+                    st.session_state.coins += 50
+                    if ek == "hint_bonus": st.session_state.hints_left += 1
+                    if ek == "shield":
+                        st.session_state.shield_active = True
+                        st.session_state.shield_used = False
+        else:
+            st.session_state.demon_blind_opt = None
+            st.session_state.combo = 0; st.session_state.total_wrong += 1
+            if mi == 1:
+                st.session_state.coins = max(0, st.session_state.coins - 10)
+            if st.session_state.shield_active and not st.session_state.shield_used:
+                st.session_state.shield_active = False; st.session_state.shield_used = True
+                st.session_state.last_correct = "shielded"
+            else:
+                st.session_state.player_hp = max(0, php - 1); st.session_state.last_correct = False
+            st.session_state.encourage_msg = random.choice(ENCOURAGE)
+        st.rerun()
 else:
     # 오답 시 정답을 강조해서 보여주기
     if not dying and lc is False:
