@@ -1,6 +1,6 @@
 import streamlit as st
 import streamlit.components.v1 as components
-import random, os, base64, pathlib, time, json
+import random, os, base64, pathlib, time, json, html as _html
 
 st.set_page_config(page_title="마왕의 성", page_icon="⚔️", layout="centered")
 
@@ -483,9 +483,9 @@ function update(dt){{
     if(selTimer>=SEL_TIME && !answered){{
       answered=true;
       // Send answer to Streamlit
-      const url=new URL(window.parent.location.href);
+      const url=new URL(window.top.location.href);
       url.searchParams.set('ans_idx',curPlat);
-      window.parent.location.href=url.toString();
+      window.top.location.href=url.toString();
     }}
   }} else {{
     selIdx=curPlat; selTimer=0;
@@ -524,9 +524,9 @@ function loop(now){{
     timeUp=drawTimer();
     if(timeUp && !answered){{
       answered=true;
-      const url=new URL(window.parent.location.href);
+      const url=new URL(window.top.location.href);
       url.searchParams.set('ans_idx','-1');
-      window.parent.location.href=url.toString();
+      window.top.location.href=url.toString();
     }}
   }}
   requestAnimationFrame(loop);
@@ -1052,7 +1052,8 @@ if not st.session_state.answered:
         if wrong: random.seed(f"{mi}_{qi}_h"); disabled_opt=random.choice(wrong)
     blind_opt = st.session_state.demon_blind_opt if mi == 4 else None
     plat_html = platformer_html(opts, disabled_opt=disabled_opt, blind_opt=blind_opt, time_limit=int(TIME_LIMIT))
-    components.html(plat_html, height=400, scrolling=False)
+    escaped = _html.escape(plat_html)
+    st.markdown(f'<iframe srcdoc="{escaped}" sandbox="allow-scripts allow-top-navigation allow-top-navigation-by-user-activation" style="width:100%;height:400px;border:none;" scrolling="no"></iframe>', unsafe_allow_html=True)
 else:
     # 오답 시 정답을 강조해서 보여주기
     if not dying and lc is False:
